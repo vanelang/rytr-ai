@@ -58,6 +58,28 @@ export default {
       },
       container: {
         center: true,
+        padding: "1rem",
+      },
+      typography: {
+        invert: {
+          css: {
+            "--tw-prose-body": "rgb(209 213 219)",
+            "--tw-prose-headings": "rgb(255 255 255)",
+            "--tw-prose-links": "rgb(255 255 255)",
+            "--tw-prose-bold": "rgb(255 255 255)",
+            "--tw-prose-counters": "rgb(209 213 219)",
+            "--tw-prose-bullets": "rgb(209 213 219)",
+            "--tw-prose-hr": "rgb(45 45 45)",
+            "--tw-prose-quotes": "rgb(209 213 219)",
+            "--tw-prose-quote-borders": "rgb(45 45 45)",
+            "--tw-prose-captions": "rgb(209 213 219)",
+            "--tw-prose-code": "rgb(255 255 255)",
+            "--tw-prose-pre-code": "rgb(209 213 219)",
+            "--tw-prose-pre-bg": "rgb(45 45 45)",
+            "--tw-prose-th-borders": "rgb(45 45 45)",
+            "--tw-prose-td-borders": "rgb(45 45 45)",
+          },
+        },
       },
     },
   },

@@ -1,37 +1,27 @@
-import MarkdownIt from "markdown-it";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkRehype from "remark-rehype";
+import rehypeStringify from "rehype-stringify";
+import rehypeRemark from "rehype-remark";
+import remarkStringify from "remark-stringify";
+import rehypeParse from "rehype-parse";
 
-const md = new MarkdownIt();
+export async function markdownToHtml(markdown: string): Promise<string> {
+  const result = await unified()
+    .use(remarkParse)
+    .use(remarkRehype)
+    .use(rehypeStringify)
+    .process(markdown);
 
-export function markdownToHtml(markdown: string): string {
-  return md.render(markdown);
+  return result.toString();
 }
 
-export function htmlToMarkdown(html: string): string {
-  return html
-    .replace(/<h1[^>]*>/g, "# ")
-    .replace(/<\/h1>/g, "\n\n")
-    .replace(/<h2[^>]*>/g, "## ")
-    .replace(/<\/h2>/g, "\n\n")
-    .replace(/<h3[^>]*>/g, "### ")
-    .replace(/<\/h3>/g, "\n\n")
-    .replace(/<p[^>]*>/g, "")
-    .replace(/<\/p>/g, "\n\n")
-    .replace(/<strong[^>]*>/g, "**")
-    .replace(/<\/strong>/g, "**")
-    .replace(/<em[^>]*>/g, "*")
-    .replace(/<\/em>/g, "*")
-    .replace(/<ul[^>]*>/g, "")
-    .replace(/<\/ul>/g, "\n")
-    .replace(/<ol[^>]*>/g, "")
-    .replace(/<\/ol>/g, "\n")
-    .replace(/<li[^>]*>/g, "- ")
-    .replace(/<\/li>/g, "\n")
-    .replace(/<blockquote[^>]*>/g, "> ")
-    .replace(/<\/blockquote>/g, "\n\n")
-    .replace(/<pre><code[^>]*>/g, "```\n")
-    .replace(/<\/code><\/pre>/g, "\n```\n")
-    .replace(/<code[^>]*>/g, "`")
-    .replace(/<\/code>/g, "`")
-    .replace(/\n\n+/g, "\n\n")
-    .trim();
+export async function htmlToMarkdown(html: string): Promise<string> {
+  const result = await unified()
+    .use(rehypeParse)
+    .use(rehypeRemark)
+    .use(remarkStringify)
+    .process(html);
+
+  return result.toString();
 }
