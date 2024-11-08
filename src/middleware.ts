@@ -3,23 +3,34 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    const isAuth = !!req.nextauth.token;
-    const isAuthPage = req.nextUrl.pathname === "/";
-    const isDashboardPage = req.nextUrl.pathname.startsWith("/dashboard");
+    const path = req.nextUrl.pathname;
+    const isAuthenticated = !!req.nextauth.token;
 
-    if (isDashboardPage && !isAuth) {
-      return NextResponse.redirect(new URL("/", req.url));
+    if (path.startsWith("/dashboard")) {
+      if (!isAuthenticated) {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+    }
+
+    if (path === "/" && isAuthenticated) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => true,
+      authorized({ req, token }) {
+        return true;
+      },
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+    pages: {
+      signIn: "/",
     },
   }
 );
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/", "/dashboard/:path*"],
 };
