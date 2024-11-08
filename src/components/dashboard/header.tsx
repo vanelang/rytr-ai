@@ -25,6 +25,10 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
     .join("")
     .toUpperCase();
 
+  const handleSignOut = () => {
+    signOut({ callbackUrl: "/" });
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60">
       <div className="container flex h-16 items-center">
@@ -38,9 +42,6 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         <div className="ml-auto flex items-center gap-4">
           <Button variant="ghost" className="text-sm text-white/70 hover:text-white">
             Dashboard
-          </Button>
-          <Button variant="ghost" className="text-sm text-white/70 hover:text-white">
-            Analytics
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -70,7 +71,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-red-400 hover:text-red-300 focus:bg-white/10"
-                onClick={() => signOut()}
+                onClick={handleSignOut}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Sign out</span>

@@ -7,24 +7,22 @@ interface Article {
   id: number;
   title: string;
   status: "draft" | "published";
-  content: string | null;
   createdAt: Date;
-  updatedAt: Date;
-  userId: string;
 }
 
 interface DashboardContentProps {
   user: User;
-  initialArticles: Article[];
+  articles: Article[];
+  onArticleCreated: () => void;
 }
 
-export function DashboardContent({ user, initialArticles }: DashboardContentProps) {
+export function DashboardContent({ user, articles, onArticleCreated }: DashboardContentProps) {
   return (
     <div className="flex min-h-screen flex-col bg-black text-white">
       <DashboardHeader user={user} />
       <main className="flex-1">
         <div className="container py-8">
-          <ArticleList initialArticles={initialArticles} />
+          <ArticleList initialArticles={articles} onArticleCreated={onArticleCreated} />
         </div>
       </main>
     </div>

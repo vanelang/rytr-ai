@@ -4,7 +4,6 @@ import { articles, contentGenerationQueue } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { generateText } from "ai";
 import { groq } from "@ai-sdk/groq";
-import { revalidatePath } from "next/cache";
 
 const model = groq("mixtral-8x7b-32768");
 
@@ -31,12 +30,33 @@ export async function GET(req: Request) {
 
         if (!article) continue;
 
-        // Generate content using AI
+        const prompt = `Write a comprehensive article about: ${article.title}
+        
+        Follow this markdown structure:
+        1. Start with a compelling introduction (2-3 paragraphs)
+        2. Create 3-5 main sections with h2 headings
+        3. Under each main section:
+           - Add 2-3 subsections with h3 headings
+           - Include relevant bullet points or numbered lists
+           - Add emphasis using **bold** and *italic* text
+           - Use blockquotes for important points
+           - Include example code blocks if relevant
+        4. End with a strong conclusion
+        
+        Make it SEO-friendly, engaging, and well-structured.
+        Use proper markdown syntax for:
+        - Headings (# ## ###)
+        - Lists (- or 1. 2. 3.)
+        - Emphasis (**bold** and *italic*)
+        - Blockquotes (>)
+        - Code blocks (\`\`\`)
+        - Horizontal rules (---)
+        
+        Ensure the content is informative and valuable to readers.`;
+
         const { text } = await generateText({
           model,
-          prompt: `Write a comprehensive article about: ${article.title}. 
-          Include introduction, main points, and conclusion. 
-          Make it SEO-friendly and engaging.`,
+          prompt,
           temperature: 0.7,
           maxTokens: 2000,
         });
@@ -45,8 +65,8 @@ export async function GET(req: Request) {
         await db
           .update(articles)
           .set({
-            content: text,
             status: "published",
+            content: text,
             updatedAt: new Date(),
           })
           .where(eq(articles.id, item.articleId));
@@ -73,7 +93,6 @@ export async function GET(req: Request) {
       }
     }
 
-    revalidatePath("/dashboard");
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to process queue" }, { status: 500 });

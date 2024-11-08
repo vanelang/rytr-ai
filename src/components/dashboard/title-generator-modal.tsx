@@ -24,6 +24,7 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
   const [loading, setLoading] = useState(false);
   const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [selectedTitleIndex, setSelectedTitleIndex] = useState<number | null>(null);
 
   const generateTitles = async () => {
     setLoading(true);
@@ -42,9 +43,11 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
     }
   };
 
-  const handleTitleSelect = async (title: string) => {
+  const handleTitleSelect = async (title: string, index: number) => {
     try {
       setCreating(true);
+      setSelectedTitleIndex(index);
+
       const response = await fetch("/api/articles/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,6 +64,7 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
       console.error("Error creating article:", error);
     } finally {
       setCreating(false);
+      setSelectedTitleIndex(null);
       onClose();
     }
   };
@@ -108,10 +112,19 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
               {generatedTitles.map((title, index) => (
                 <div
                   key={index}
-                  className="rounded-lg border border-white/10 p-4 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
-                  onClick={() => handleTitleSelect(title)}
+                  className={`rounded-lg border border-white/10 p-4 bg-white/5 
+                    ${
+                      creating && selectedTitleIndex === index ? "opacity-50" : "hover:bg-white/10"
+                    } 
+                    transition-colors cursor-pointer`}
+                  onClick={() => !creating && handleTitleSelect(title, index)}
                 >
-                  <p className="text-white">{title}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-white">{title}</p>
+                    {creating && selectedTitleIndex === index && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

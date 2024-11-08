@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Loader2 } from "lucide-react";
 import { TitleGeneratorModal } from "./title-generator-modal";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 type Article = {
   id: number;
@@ -15,19 +16,20 @@ type Article = {
 
 interface ArticleListProps {
   initialArticles: Article[];
+  onArticleCreated: () => void;
 }
 
-export function ArticleList({ initialArticles }: ArticleListProps) {
-  const [articles, setArticles] = useState<Article[]>(
-    initialArticles.map((article) => ({
-      ...article,
-      createdAt: new Date(article.createdAt), // Convert string date to Date object
-    }))
-  );
-  const [open, setOpen] = useState(false);
+export function ArticleList({ initialArticles, onArticleCreated }: ArticleListProps) {
+  const router = useRouter();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleTitleSelect = (title: string) => {
-    setOpen(false);
+  const handleTitleSelect = async (title: string) => {
+    setIsModalOpen(false);
+    await onArticleCreated();
+  };
+
+  const handleArticleClick = (articleId: number) => {
+    router.push(`/dashboard/articles/${articleId}`);
   };
 
   return (
@@ -37,13 +39,13 @@ export function ArticleList({ initialArticles }: ArticleListProps) {
           <h1 className="text-3xl font-bold tracking-tight">Your Articles</h1>
           <p className="mt-1 text-sm text-white/70">Create and manage your AI-powered content</p>
         </div>
-        <Button className="bg-primary hover:bg-primary/90" onClick={() => setOpen(true)}>
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create New Article
         </Button>
       </div>
 
-      {articles.length === 0 ? (
+      {initialArticles.length === 0 ? (
         <div className="mt-16 flex flex-col items-center justify-center gap-4">
           <div className="relative w-60 h-60">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 blur-3xl" />
@@ -60,15 +62,16 @@ export function ArticleList({ initialArticles }: ArticleListProps) {
         </div>
       ) : (
         <div className="mt-8 space-y-4">
-          {articles.map((article) => (
+          {initialArticles.map((article) => (
             <div
               key={article.id}
-              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur transition-colors hover:bg-white/10"
+              onClick={() => handleArticleClick(article.id)}
+              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur transition-colors hover:bg-white/10 cursor-pointer"
             >
               <div>
                 <h3 className="font-medium text-white">{article.title}</h3>
                 <p className="mt-1 text-sm text-white/70">
-                  Created – {format(new Date(article.createdAt), "PPP")}
+                  Created {format(new Date(article.createdAt), "PPP")}
                 </p>
               </div>
               <span
@@ -86,8 +89,8 @@ export function ArticleList({ initialArticles }: ArticleListProps) {
       )}
 
       <TitleGeneratorModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         onTitleSelect={handleTitleSelect}
       />
     </>
