@@ -81,15 +81,16 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-white">{article.title}</h1>
         <div className="flex items-center gap-4">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-medium ${
-              article.status === "published"
-                ? "bg-green-500/10 text-green-400"
-                : "bg-yellow-500/10 text-yellow-400"
-            }`}
-          >
-            {article.status}
-          </span>
+          {article.status === "draft" ? (
+            <div className="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Processing
+            </div>
+          ) : (
+            <span className="rounded-full px-3 py-1 text-xs font-medium bg-green-500/10 text-green-400">
+              Published
+            </span>
+          )}
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             <span className="ml-2">Save</span>

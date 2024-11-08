@@ -35,3 +35,26 @@ export async function GET(request: Request, { params }: RouteParams) {
 
   return NextResponse.json(article);
 }
+
+export async function DELETE(request: Request, { params }: RouteParams) {
+  const { articleId } = await params;
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.email, session.user.email),
+  });
+
+  if (!dbUser) {
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  await db
+    .delete(articles)
+    .where(and(eq(articles.id, parseInt(articleId)), eq(articles.userId, dbUser.id)));
+
+  return new NextResponse(null, { status: 204 });
+}
