@@ -179,16 +179,16 @@ export default function DashboardPage() {
                       placeholder="e.g., Digital Marketing"
                       className="h-12 bg-black/50 text-white border-white/10"
                     />
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-white/70">Number of titles:</label>
+                    <div className="flex items-center gap-2 text-xs">
+                      <label className="text-white/70">Number of titles:</label>
                       <select
                         value={titleCount}
                         onChange={(e) => setTitleCount(Number(e.target.value))}
-                        className="h-8 bg-black/50 text-white border-white/10 rounded-md"
+                        className="h-8 bg-black/50 text-white border-white/10 rounded-md border px-1"
                       >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
+                        <option value={1}>01</option>
+                        <option value={2}>02</option>
+                        <option value={3}>03</option>
                       </select>
                     </div>
                   </div>
