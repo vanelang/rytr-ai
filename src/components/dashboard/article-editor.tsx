@@ -1,11 +1,10 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
 import { Editor } from "@/components/editor";
 import { htmlToMarkdown } from "@/lib/markdown";
-import { use } from "react";
 
 interface Article {
   id: number;
@@ -18,21 +17,34 @@ interface ArticleEditorProps {
   articleId: number;
 }
 
-async function getArticle(articleId: number): Promise<Article> {
-  const response = await fetch(`/api/articles/${articleId}`);
-  if (!response.ok) {
-    throw new Error("Failed to fetch article");
-  }
-  return response.json();
-}
-
 export function ArticleEditor({ articleId }: ArticleEditorProps) {
   const router = useRouter();
-  const article = use(getArticle(articleId));
-  const [content, setContent] = useState(article.content || "");
+  const [article, setArticle] = useState<Article | null>(null);
+  const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    async function fetchArticle() {
+      try {
+        const response = await fetch(`/api/articles/${articleId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch article");
+        }
+        const data = await response.json();
+        setArticle(data);
+        setContent(data.content || "");
+      } catch (error) {
+        console.error("Error fetching article:", error);
+        router.push("/dashboard");
+      }
+    }
+
+    fetchArticle();
+  }, [articleId, router]);
+
   const handleSave = useCallback(async () => {
+    if (!article) return;
+
     setSaving(true);
     try {
       const response = await fetch(`/api/articles/${article.id}`, {
@@ -53,12 +65,16 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
     } finally {
       setSaving(false);
     }
-  }, [content, article.id, router]);
+  }, [content, article, router]);
 
   const handleEditorChange = (html: string) => {
     const markdown = htmlToMarkdown(html);
     setContent(markdown);
   };
+
+  if (!article) {
+    return null;
+  }
 
   return (
     <div className="container py-6">

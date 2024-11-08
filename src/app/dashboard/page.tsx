@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import { DashboardContent } from "./dashboard-content";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -35,16 +35,15 @@ export default function DashboardPage() {
     }
   }, [session]);
 
-  // Show loading state for both authentication and data fetching
-  if (status === "loading" || (status === "authenticated" && loading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (status === "loading") {
+    return null;
   }
 
   if (!session?.user) return null;
+
+  if (loading) {
+    return <DashboardSkeleton user={session.user} />;
+  }
 
   return (
     <DashboardContent user={session.user} articles={articles} onArticleCreated={fetchArticles} />

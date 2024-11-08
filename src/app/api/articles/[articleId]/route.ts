@@ -5,10 +5,12 @@ import { articles, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ articleId: string }> }
-) {
+interface RouteParams {
+  params: Promise<{ articleId: string }>;
+}
+
+export async function GET(request: Request, { params }: RouteParams) {
+  const { articleId } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {
@@ -24,7 +26,7 @@ export async function GET(
   }
 
   const article = await db.query.articles.findFirst({
-    where: and(eq(articles.id, parseInt((await params).articleId)), eq(articles.userId, dbUser.id)),
+    where: and(eq(articles.id, parseInt(articleId)), eq(articles.userId, dbUser.id)),
   });
 
   if (!article) {
