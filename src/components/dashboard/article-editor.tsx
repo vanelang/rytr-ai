@@ -1,11 +1,11 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Save } from "lucide-react";
 import { Editor } from "@/components/editor";
-import { Preview } from "@/components/preview";
 import { htmlToMarkdown } from "@/lib/markdown";
+import { use } from "react";
 
 interface Article {
   id: number;
@@ -15,11 +15,20 @@ interface Article {
 }
 
 interface ArticleEditorProps {
-  article: Article;
+  articleId: number;
 }
 
-export function ArticleEditor({ article }: ArticleEditorProps) {
+async function getArticle(articleId: number): Promise<Article> {
+  const response = await fetch(`/api/articles/${articleId}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch article");
+  }
+  return response.json();
+}
+
+export function ArticleEditor({ articleId }: ArticleEditorProps) {
   const router = useRouter();
+  const article = use(getArticle(articleId));
   const [content, setContent] = useState(article.content || "");
   const [saving, setSaving] = useState(false);
 
@@ -72,17 +81,12 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
-        <div className="rounded-lg border border-white/10 bg-black/50 p-4">
-          <Editor
-            value={content}
-            onChange={handleEditorChange}
-            placeholder="Start writing your article..."
-          />
-        </div>
-        <div className="rounded-lg border border-white/10 bg-black/50 p-4 overflow-auto max-h-[calc(100vh-200px)]">
-          <Preview content={content} />
-        </div>
+      <div className="rounded-lg border border-white/10 bg-black/50 p-4 overflow-auto max-h-[calc(100vh-200px)]">
+        <Editor
+          value={content}
+          onChange={handleEditorChange}
+          placeholder="Start writing your article..."
+        />
       </div>
     </div>
   );
