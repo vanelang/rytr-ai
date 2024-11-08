@@ -202,6 +202,35 @@ export const authOptions: NextAuthOptions = {
           where: eq(users.email, user.email),
         });
 
+        // Check if account exists
+        const existingAccount = await db.query.accounts.findFirst({
+          where: and(
+            eq(accounts.provider, account.provider),
+            eq(accounts.providerAccountId, account.providerAccountId)
+          ),
+        });
+
+        // If account exists, ensure it matches the user
+        if (existingAccount) {
+          if (dbUser && existingAccount.userId === dbUser.id) {
+            // Account is already properly linked
+            // Just update the session
+            const sessionToken = randomUUID();
+            const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+            await db.delete(sessions).where(eq(sessions.userId, dbUser.id));
+            await db.insert(sessions).values({
+              sessionToken,
+              userId: dbUser.id,
+              expires,
+            });
+
+            return true;
+          }
+          // Account exists but doesn't match user - deny access
+          return false;
+        }
+
         // Create new user if doesn't exist
         if (!dbUser) {
           const id = randomUUID();
@@ -221,7 +250,7 @@ export const authOptions: NextAuthOptions = {
           user.id = dbUser.id;
         }
 
-        // Link OAuth account
+        // Link new OAuth account
         await db.insert(accounts).values({
           userId: dbUser.id,
           type: account.type,
@@ -241,7 +270,6 @@ export const authOptions: NextAuthOptions = {
         const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
         await db.delete(sessions).where(eq(sessions.userId, dbUser.id));
-
         await db.insert(sessions).values({
           sessionToken,
           userId: dbUser.id,
@@ -250,6 +278,7 @@ export const authOptions: NextAuthOptions = {
 
         return true;
       } catch (error) {
+        console.error("SignIn error:", error);
         return false;
       }
     },
