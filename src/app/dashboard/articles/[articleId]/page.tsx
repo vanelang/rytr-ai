@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 import { ArticleEditor } from "@/components/dashboard/article-editor";
-import { Suspense } from "react";
 import { ArticleEditorSkeleton } from "@/components/dashboard/article-editor-skeleton";
+import { Suspense } from "react";
 
 interface PageProps {
   params: Promise<{ articleId: string }>;
@@ -21,11 +21,9 @@ export default async function ArticlePage({ params }: PageProps) {
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <DashboardHeader user={session.user} />
-      <div className="flex-1">
-        <Suspense fallback={<ArticleEditorSkeleton />}>
-          <ArticleEditor articleId={parseInt(articleId)} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<ArticleEditorSkeleton />}>
+        <ArticleEditor articleId={parseInt(articleId)} />
+      </Suspense>
     </div>
   );
 }

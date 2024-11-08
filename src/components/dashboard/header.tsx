@@ -39,10 +39,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </span>
         </Link>
 
-        <div className="ml-auto flex items-center gap-4">
-          <Button variant="ghost" className="text-sm text-white/70 hover:text-white">
-            Dashboard
-          </Button>
+        <div className="ml-auto flex items-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

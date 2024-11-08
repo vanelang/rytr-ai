@@ -113,7 +113,7 @@ export function ArticleList({ initialArticles, onArticleCreated }: ArticleListPr
               <div className="flex items-center gap-4">
                 {article.status === "draft" ? (
                   <div className="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400">
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <Loader2 className="h-3 w-3 aspect-square animate-spin" />
                     Processing
                   </div>
                 ) : (

@@ -68,6 +68,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
   }, [content, article, router]);
 
   const handleEditorChange = (html: string) => {
+    if (saving) return;
     const markdown = htmlToMarkdown(html);
     setContent(markdown);
   };
@@ -98,12 +99,14 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
         </div>
       </div>
 
-      <div className="rounded-lg border border-white/10 bg-black/50 p-4 overflow-auto max-h-[calc(100vh-200px)]">
-        <Editor
-          value={content}
-          onChange={handleEditorChange}
-          placeholder="Start writing your article..."
-        />
+      <div className="rounded-lg border border-white/10 bg-black/50 p-4">
+        <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+          <Editor
+            value={content}
+            onChange={handleEditorChange}
+            placeholder="Start writing your article..."
+          />
+        </div>
       </div>
     </div>
   );
