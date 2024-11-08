@@ -11,19 +11,15 @@ export default withAuth(
       return NextResponse.redirect(new URL("/", req.url));
     }
 
-    if (isAuthPage && isAuth) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ token }) => true,
     },
   }
 );
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"],
+  matcher: ["/dashboard/:path*"],
 };
