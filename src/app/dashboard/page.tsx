@@ -37,26 +37,46 @@ export default function DashboardPage() {
   const [topic, setTopic] = useState("");
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
+  const [generatedTitle, setGeneratedTitle] = useState<string>("");
 
-  const generateTitles = async () => {
+  const generateTitle = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call to OpenAI
-      const mockTitle = `The Ultimate Guide to ${topic}: Tips and Tricks`;
-      const newArticle: Article = {
-        id: Date.now().toString(),
-        title: mockTitle,
-        status: "draft",
-        createdAt: new Date().toISOString(),
-      };
-      setArticles([newArticle, ...articles]);
-      setOpen(false);
-      setTopic("");
+      const response = await fetch("/api/generate-title", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ topic }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate title");
+      }
+
+      const data = await response.json();
+      setGeneratedTitle(data.title);
     } catch (error) {
       console.error("Error generating title:", error);
+      alert("Failed to generate title. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const createArticle = () => {
+    if (!generatedTitle) return;
+
+    const newArticle: Article = {
+      id: Date.now().toString(),
+      title: generatedTitle,
+      status: "draft",
+      createdAt: new Date().toISOString(),
+    };
+    setArticles([newArticle, ...articles]);
+    setGeneratedTitle("");
+    setOpen(false);
+    setTopic("");
   };
 
   const userInitials = session?.user?.name
@@ -162,12 +182,27 @@ export default function DashboardPage() {
                     />
                   </div>
                   <Button
-                    onClick={generateTitles}
+                    onClick={generateTitle}
                     disabled={!topic || loading}
                     className="bg-primary hover:bg-primary/90"
                   >
-                    {loading ? "Generating..." : "Generate"}
+                    {loading ? "Generating..." : "Generate Title"}
                   </Button>
+
+                  {generatedTitle && (
+                    <div className="mt-4 space-y-2">
+                      <h3 className="text-sm font-medium text-white">Generated Title:</h3>
+                      <div className="rounded-lg border border-white/10 p-4 bg-white/5">
+                        <p className="text-white">{generatedTitle}</p>
+                      </div>
+                      <Button
+                        onClick={createArticle}
+                        className="w-full bg-primary hover:bg-primary/90"
+                      >
+                        Use This Title
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
