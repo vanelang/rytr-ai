@@ -37,7 +37,8 @@ export default function DashboardPage() {
   const [topic, setTopic] = useState("");
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
-  const [generatedTitle, setGeneratedTitle] = useState<string>("");
+  const [titleCount, setTitleCount] = useState<number>(1);
+  const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
 
   const generateTitle = async () => {
     setLoading(true);
@@ -47,34 +48,32 @@ export default function DashboardPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify({ topic, count: titleCount }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate title");
+        throw new Error("Failed to generate titles");
       }
 
       const data = await response.json();
-      setGeneratedTitle(data.title);
+      setGeneratedTitles(data.titles);
     } catch (error) {
-      console.error("Error generating title:", error);
-      alert("Failed to generate title. Please try again.");
+      console.error("Error generating titles:", error);
+      alert("Failed to generate titles. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const createArticle = () => {
-    if (!generatedTitle) return;
-
+  const createArticle = (selectedTitle: string) => {
     const newArticle: Article = {
       id: Date.now().toString(),
-      title: generatedTitle,
+      title: selectedTitle,
       status: "draft",
       createdAt: new Date().toISOString(),
     };
     setArticles([newArticle, ...articles]);
-    setGeneratedTitle("");
+    setGeneratedTitles([]);
     setOpen(false);
     setTopic("");
   };
@@ -168,7 +167,7 @@ export default function DashboardPage() {
                 <DialogHeader>
                   <DialogTitle className="text-white">Generate Article Title</DialogTitle>
                   <DialogDescription className="text-white/70">
-                    Enter a topic to generate an engaging article title.
+                    Enter a topic and choose how many titles to generate (1-3).
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -180,27 +179,39 @@ export default function DashboardPage() {
                       placeholder="e.g., Digital Marketing"
                       className="h-12 bg-black/50 text-white border-white/10"
                     />
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-white/70">Number of titles:</label>
+                      <select
+                        value={titleCount}
+                        onChange={(e) => setTitleCount(Number(e.target.value))}
+                        className="h-8 bg-black/50 text-white border-white/10 rounded-md"
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </div>
                   </div>
                   <Button
                     onClick={generateTitle}
                     disabled={!topic || loading}
                     className="bg-primary hover:bg-primary/90"
                   >
-                    {loading ? "Generating..." : "Generate Title"}
+                    {loading ? "Generating..." : "Generate Titles"}
                   </Button>
 
-                  {generatedTitle && (
+                  {generatedTitles.length > 0 && (
                     <div className="mt-4 space-y-2">
-                      <h3 className="text-sm font-medium text-white">Generated Title:</h3>
-                      <div className="rounded-lg border border-white/10 p-4 bg-white/5">
-                        <p className="text-white">{generatedTitle}</p>
-                      </div>
-                      <Button
-                        onClick={createArticle}
-                        className="w-full bg-primary hover:bg-primary/90"
-                      >
-                        Use This Title
-                      </Button>
+                      <h3 className="text-sm font-medium text-white">Select a title to use:</h3>
+                      {generatedTitles.map((title, index) => (
+                        <div
+                          key={index}
+                          className="rounded-lg border border-white/10 p-4 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                          onClick={() => createArticle(title)}
+                        >
+                          <p className="text-white">{title}</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
