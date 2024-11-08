@@ -120,6 +120,21 @@ export const articleAnalytics = pgTable("article_analytics", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Content generation queue
+export const contentGenerationQueue = pgTable("content_generation_queue", {
+  id: serial("id").primaryKey(),
+  articleId: integer("article_id")
+    .notNull()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["pending", "processing", "completed", "failed"] })
+    .notNull()
+    .default("pending"),
+  error: text("error"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  processedAt: timestamp("processed_at"),
+});
+
 // Define relationships
 export const usersRelations = relations(users, ({ many }) => ({
   articles: many(articles),

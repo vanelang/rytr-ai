@@ -1,6 +1,16 @@
 "use client";
 import { useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { X } from "lucide-react";
 
 interface TitleGeneratorModalProps {
   isOpen: boolean;
@@ -9,22 +19,22 @@ interface TitleGeneratorModalProps {
 }
 
 export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGeneratorModalProps) {
+  const router = useRouter();
   const [topic, setTopic] = useState("");
   const [loading, setLoading] = useState(false);
   const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const generateTitles = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API call to OpenAI
-      const mockTitles = [
-        `10 Essential ${topic} Strategies for 2024`,
-        `The Ultimate Guide to ${topic}: Tips and Tricks`,
-        `How ${topic} is Transforming Modern Business`,
-        `${topic} Best Practices: A Comprehensive Overview`,
-        `Why ${topic} Matters More Than Ever Before`,
-      ];
-      setGeneratedTitles(mockTitles);
+      const response = await fetch("/api/generate-title", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
+      });
+      const data = await response.json();
+      setGeneratedTitles(data.titles);
     } catch (error) {
       console.error("Error generating titles:", error);
     } finally {
@@ -32,59 +42,82 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
     }
   };
 
-  if (!isOpen) return null;
+  const handleTitleSelect = async (title: string) => {
+    try {
+      setCreating(true);
+      const response = await fetch("/api/articles/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create article");
+      }
+
+      onTitleSelect(title);
+      router.refresh();
+    } catch (error) {
+      console.error("Error creating article:", error);
+    } finally {
+      setCreating(false);
+      onClose();
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg max-w-2xl w-full mx-4 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Generate Article Title</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-black/95 border-white/10 backdrop-blur">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-white">Generate Article Title</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/70 hover:text-white"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogDescription className="text-white/70">
+            Enter a topic to generate engaging article titles.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              What's your article about?
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                placeholder="e.g., Digital Marketing"
-              />
-              <button
-                onClick={generateTitles}
-                disabled={!topic || loading}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {loading ? "Generating..." : "Generate"}
-              </button>
-            </div>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., Digital Marketing"
+              className="h-12 bg-black/50 text-white border-white/10"
+            />
+            <Button
+              onClick={generateTitles}
+              disabled={!topic || loading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {loading ? "Generating..." : "Generate Titles"}
+            </Button>
           </div>
 
           {generatedTitles.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Choose a title:</h3>
-              <div className="space-y-2">
-                {generatedTitles.map((title, index) => (
-                  <button
-                    key={index}
-                    onClick={() => onTitleSelect(title)}
-                    className="w-full text-left p-3 rounded-md border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
-                  >
-                    {title}
-                  </button>
-                ))}
-              </div>
+            <div className="mt-4 space-y-2">
+              <h3 className="text-sm font-medium text-white">Select a title to use:</h3>
+              {generatedTitles.map((title, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg border border-white/10 p-4 bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+                  onClick={() => handleTitleSelect(title)}
+                >
+                  <p className="text-white">{title}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

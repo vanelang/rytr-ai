@@ -5,7 +5,7 @@
 ### User Authentication & Basic Setup
 
 - [x] User registration and login system
-- [ ] User dashboard
+- [x] User dashboard
 - [ ] Basic profile management
 - [ ] Project/Article organization structure
 
