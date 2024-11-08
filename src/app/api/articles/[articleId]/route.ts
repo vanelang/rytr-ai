@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "@/db";
-import { articles, users } from "@/db/schema";
+import { articles, ResearchSource, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -33,7 +33,18 @@ export async function GET(request: Request, { params }: RouteParams) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
-  return NextResponse.json(article);
+  const response = {
+    ...article,
+    sources: article.sources || [],
+    formattedSources: article.sources
+      ? article.sources.map((source: ResearchSource) => ({
+          ...source,
+          displayText: `${source.title} - ${source.source}`,
+        }))
+      : [],
+  };
+
+  return NextResponse.json(response);
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {

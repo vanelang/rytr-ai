@@ -15,6 +15,13 @@
       "when": 1731058127993,
       "tag": "0001_fat_magneto",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1731083382023,
+      "tag": "0002_late_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { articles, contentGenerationQueue } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { generateText } from "ai";
 import { groq } from "@ai-sdk/groq";
 
@@ -9,21 +9,18 @@ const model = groq("mixtral-8x7b-32768");
 
 export async function GET(req: Request) {
   try {
-    // Get pending articles from queue
     const pendingItems = await db.query.contentGenerationQueue.findMany({
       where: eq(contentGenerationQueue.status, "pending"),
-      limit: 5, // Process 5 at a time
+      limit: 5,
     });
 
     for (const item of pendingItems) {
       try {
-        // Update status to processing
         await db
           .update(contentGenerationQueue)
           .set({ status: "processing" })
           .where(eq(contentGenerationQueue.id, item.id));
 
-        // Get article details
         const article = await db.query.articles.findFirst({
           where: eq(articles.id, item.articleId),
         });
@@ -52,7 +49,8 @@ export async function GET(req: Request) {
         - Code blocks (\`\`\`)
         - Horizontal rules (---)
         
-        Ensure the content is informative and valuable to readers.`;
+        Ensure the content is informative, accurate, and valuable to readers.
+        The article should be detailed and comprehensive, covering all important aspects of the topic.`;
 
         const { text } = await generateText({
           model,

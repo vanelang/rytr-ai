@@ -9,10 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, Loader2, Trash2 } from "lucide-react";
+import { FileText, Plus, Loader2, Trash2, Clock } from "lucide-react";
 import { TitleGeneratorModal } from "./title-generator-modal";
-import { format } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import { useRouter } from "next/navigation";
+import moment from "moment";
 
 type Article = {
   id: number;
@@ -31,6 +32,54 @@ export function ArticleList({ initialArticles, onArticleCreated }: ArticleListPr
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteArticleId, setDeleteArticleId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const isInQueue = (createdAt: Date) => {
+    const created = moment(createdAt);
+    const nextMinute = moment(created).startOf("minute").add(1, "minutes");
+    return moment().isBefore(nextMinute);
+  };
+
+  const getQueueEta = (createdAt: Date) => {
+    const created = new Date(createdAt);
+    const nextMinute = new Date(created);
+    nextMinute.setMinutes(nextMinute.getMinutes() + 1);
+    nextMinute.setSeconds(0);
+    nextMinute.setMilliseconds(0);
+
+    const timeLeft = formatDistance(nextMinute, new Date(), {
+      addSuffix: true,
+      includeSeconds: true,
+    });
+    return timeLeft;
+  };
+
+  const getArticleStatus = (article: Article) => {
+    if (article.status === "published") {
+      return {
+        label: "Published",
+        className: "bg-green-500/10 text-green-400",
+        icon: null,
+        eta: null,
+      };
+    }
+
+    if (isInQueue(article.createdAt)) {
+      const eta = getQueueEta(article.createdAt);
+      return {
+        label: "In Queue",
+        className: "bg-blue-500/10 text-blue-400",
+        icon: <Clock className="h-3 w-3 mr-1" />,
+        eta: `Processing ${eta}`,
+      };
+    }
+
+    return {
+      label: "Processing",
+      className: "bg-yellow-500/10 text-yellow-400",
+      icon: <Loader2 className="h-3 w-3 mr-1 animate-spin" />,
+      eta: null,
+    };
+  };
 
   const handleTitleSelect = async (title: string) => {
     setIsModalOpen(false);
@@ -101,40 +150,41 @@ export function ArticleList({ initialArticles, onArticleCreated }: ArticleListPr
         </div>
       ) : (
         <div className="mt-6 sm:mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {initialArticles.map((article) => (
-            <div
-              key={article.id}
-              onClick={() => handleArticleClick(article.id)}
-              className="group flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur transition-colors hover:bg-white/10 cursor-pointer"
-            >
-              <div>
-                <h3 className="font-medium text-white line-clamp-2">{article.title}</h3>
-                <p className="mt-1 text-xs sm:text-sm text-white/70">
-                  Created {format(new Date(article.createdAt), "PPP")}
-                </p>
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-4">
-                {article.status === "draft" ? (
-                  <div className="flex items-center gap-2 rounded-full px-2 sm:px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400">
-                    <Loader2 className="h-3 w-3 aspect-square animate-spin" />
-                    Processing
+          {initialArticles.map((article) => {
+            const status = getArticleStatus(article);
+
+            return (
+              <div
+                key={article.id}
+                onClick={() => handleArticleClick(article.id)}
+                className="group flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur transition-colors hover:bg-white/10 cursor-pointer"
+              >
+                <div>
+                  <h3 className="font-medium text-white line-clamp-2">{article.title}</h3>
+                  <p className="mt-1 text-xs sm:text-sm text-white/70">
+                    Created {format(new Date(article.createdAt), "PPP")}
+                  </p>
+                  {status.eta && <p className="mt-1 text-xs text-blue-400/70">{status.eta}</p>}
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-4">
+                  <div
+                    className={`flex items-center gap-1 rounded-full px-2 sm:px-3 py-1 text-xs font-medium ${status.className}`}
+                  >
+                    {status.icon}
+                    {status.label}
                   </div>
-                ) : (
-                  <span className="rounded-full px-2 sm:px-3 py-1 text-xs font-medium bg-green-500/10 text-green-400">
-                    Published
-                  </span>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => handleDeleteClick(e, article.id)}
-                >
-                  <Trash2 className="h-4 w-4 text-red-400" />
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => handleDeleteClick(e, article.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-red-400" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

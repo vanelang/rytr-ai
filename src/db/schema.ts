@@ -29,6 +29,14 @@ interface Account {
   session_state?: string;
 }
 
+// Add this new interface
+export interface ResearchSource {
+  title: string;
+  summary: string;
+  source: string;
+  url?: string;
+}
+
 // Users table
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -89,6 +97,7 @@ export const articles = pgTable("articles", {
     description: string;
     readingTime: number;
   }>(),
+  sources: json("sources").$type<ResearchSource[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   publishedAt: timestamp("published_at"),
