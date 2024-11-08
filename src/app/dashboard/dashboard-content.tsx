@@ -61,7 +61,7 @@ export function DashboardContent() {
     <div className="flex min-h-screen flex-col bg-black text-white">
       <DashboardHeader user={session.user} />
       <main className="flex-1">
-        <div className="container py-8">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
           <ArticleList initialArticles={articles} onArticleCreated={fetchArticles} />
         </div>
       </main>

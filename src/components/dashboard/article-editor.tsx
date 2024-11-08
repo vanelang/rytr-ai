@@ -217,9 +217,9 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
   }
 
   return (
-    <div className="container py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-white">{article.title}</h1>
+    <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
+        <h1 className="text-lg sm:text-xl font-semibold text-white">{article.title}</h1>
         <div className="flex items-center gap-4">
           {article.status === "draft" ? (
             <div className="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400">
@@ -233,13 +233,15 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
           )}
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            <span className="ml-2">Save</span>
+            <span className="ml-2 hidden sm:inline">Save</span>
           </Button>
         </div>
       </div>
 
       <div className="rounded-lg border border-white/10 bg-black/50">
-        <MenuBar editor={editor} />
+        <div className="overflow-x-auto">
+          <MenuBar editor={editor} />
+        </div>
         <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
           <EditorContent editor={editor} />
         </div>
