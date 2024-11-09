@@ -5,10 +5,9 @@ import { Button } from "@/components/ui/button";
 import {
   Loader2,
   Save,
-  Bold,
-  Italic,
-  Strikethrough,
-  Code,
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  Code as CodeIcon,
   Heading1,
   Heading2,
   List,
@@ -20,6 +19,18 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { markdownToHtml, htmlToMarkdown } from "@/lib/markdown";
 import { IBM_Plex_Mono } from "next/font/google";
+import Document from "@tiptap/extension-document";
+import Paragraph from "@tiptap/extension-paragraph";
+import Text from "@tiptap/extension-text";
+import History from "@tiptap/extension-history";
+import Bold from "@tiptap/extension-bold";
+import Italic from "@tiptap/extension-italic";
+import CodeExtension from "@tiptap/extension-code";
+import Heading from "@tiptap/extension-heading";
+import BulletList from "@tiptap/extension-bullet-list";
+import OrderedList from "@tiptap/extension-ordered-list";
+import ListItem from "@tiptap/extension-list-item";
+import Blockquote from "@tiptap/extension-blockquote";
 
 interface Article {
   id: number;
@@ -55,7 +66,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
           editor.isActive("bold") ? "bg-white/10 text-white" : ""
         }`}
       >
-        <Bold className="h-4 w-4" />
+        <BoldIcon className="h-4 w-4" />
       </Button>
       <Button
         size="sm"
@@ -66,18 +77,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
           editor.isActive("italic") ? "bg-white/10 text-white" : ""
         }`}
       >
-        <Italic className="h-4 w-4" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        disabled={!editor.can().chain().focus().toggleStrike().run()}
-        className={`text-white/70 hover:text-white hover:bg-white/10 ${
-          editor.isActive("strike") ? "bg-white/10 text-white" : ""
-        }`}
-      >
-        <Strikethrough className="h-4 w-4" />
+        <ItalicIcon className="h-4 w-4" />
       </Button>
       <Button
         size="sm"
@@ -88,7 +88,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
           editor.isActive("code") ? "bg-white/10 text-white" : ""
         }`}
       >
-        <Code className="h-4 w-4" />
+        <CodeIcon className="h-4 w-4" />
       </Button>
       <div className="w-px h-6 bg-white/10 mx-1" />
       <Button
@@ -152,30 +152,62 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        codeBlock: {
-          HTMLAttributes: {
-            spellcheck: false,
+  const editor = useEditor(
+    {
+      extensions: [
+        Document,
+        Paragraph,
+        Text,
+        History,
+        Bold,
+        Italic,
+        CodeExtension,
+        Heading,
+        BulletList,
+        OrderedList,
+        ListItem,
+        Blockquote,
+        StarterKit.configure({
+          document: false,
+          paragraph: false,
+          text: false,
+          history: false,
+          bold: false,
+          italic: false,
+          strike: false,
+          code: false,
+          heading: false,
+          bulletList: false,
+          orderedList: false,
+          listItem: false,
+          blockquote: false,
+          codeBlock: {
+            HTMLAttributes: {
+              spellcheck: false,
+            },
           },
+        }),
+        Placeholder.configure({
+          placeholder: "Start writing your article...",
+        }),
+      ],
+      content: content,
+      editorProps: {
+        attributes: {
+          class: `prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 prose-code:font-[var(--font-ibm-plex-mono),_monospace] prose-pre:font-[var(--font-ibm-plex-mono),_monospace] max-w-none focus:outline-none min-h-[500px] px-4 py-2`,
         },
-      }),
-      Placeholder.configure({
-        placeholder: "Start writing your article...",
-      }),
-    ],
-    content: content,
-    editorProps: {
-      attributes: {
-        class: `prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 prose-code:font-[var(--font-ibm-plex-mono),_monospace] prose-pre:font-[var(--font-ibm-plex-mono),_monospace] max-w-none focus:outline-none min-h-[500px] px-4 py-2`,
       },
+      onUpdate: ({ editor }) => {
+        if (saving) return;
+        setContent(editor.getHTML());
+      },
+      editable: true,
+      injectCSS: true,
+      enableCoreExtensions: true,
+      immediatelyRender: false,
     },
-    onUpdate: ({ editor }) => {
-      if (saving) return;
-      setContent(editor.getHTML());
-    },
-  });
+    [initialArticle.id]
+  );
 
   useEffect(() => {
     const initializeContent = async () => {
