@@ -14,6 +14,7 @@ import { TitleGeneratorModal } from "./title-generator-modal";
 import { format, formatDistance } from "date-fns";
 import { useRouter } from "next/navigation";
 import moment from "moment";
+import Link from "next/link";
 
 type Article = {
   id: number;
@@ -154,9 +155,10 @@ export function ArticleList({ initialArticles, onArticleCreated }: ArticleListPr
             const status = getArticleStatus(article);
 
             return (
-              <div
+              <Link
                 key={article.id}
-                onClick={() => handleArticleClick(article.id)}
+                href={`/dashboard/articles/${article.id}`}
+                prefetch={true}
                 className="group flex flex-col justify-between rounded-xl border border-white/10 bg-white/5 p-4 sm:p-6 backdrop-blur transition-colors hover:bg-white/10 cursor-pointer"
               >
                 <div>
@@ -182,7 +184,7 @@ export function ArticleList({ initialArticles, onArticleCreated }: ArticleListPr
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </Button>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>

@@ -29,6 +29,7 @@ interface Article {
 
 interface ArticleEditorProps {
   articleId: number;
+  initialArticle: Article;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -138,9 +139,9 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-export function ArticleEditor({ articleId }: ArticleEditorProps) {
+export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps) {
   const router = useRouter();
-  const [article, setArticle] = useState<Article | null>(null);
+  const [article, setArticle] = useState(initialArticle);
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -165,25 +166,16 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
   });
 
   useEffect(() => {
-    async function fetchArticle() {
-      try {
-        const response = await fetch(`/api/articles/${articleId}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch article");
-        }
-        const data = await response.json();
-        setArticle(data);
-        const htmlContent = await markdownToHtml(data.content || "");
+    const initializeContent = async () => {
+      if (initialArticle.content) {
+        const htmlContent = await markdownToHtml(initialArticle.content);
         setContent(htmlContent);
         editor?.commands.setContent(htmlContent);
-      } catch (error) {
-        console.error("Error fetching article:", error);
-        router.push("/dashboard");
       }
-    }
+    };
 
-    fetchArticle();
-  }, [articleId, router, editor]);
+    initializeContent();
+  }, [initialArticle.content, editor]);
 
   const handleSave = useCallback(async () => {
     if (!article) return;

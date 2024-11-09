@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import { X, Minus, Plus } from "lucide-react";
 
 interface TitleGeneratorModalProps {
   isOpen: boolean;
@@ -21,23 +21,40 @@ interface TitleGeneratorModalProps {
 export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGeneratorModalProps) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
+  const [titleCount, setTitleCount] = useState(2);
   const [loading, setLoading] = useState(false);
   const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [selectedTitleIndex, setSelectedTitleIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const generateTitles = async () => {
     setLoading(true);
+    setError(null);
+    setGeneratedTitles([]);
+
     try {
       const response = await fetch("/api/generate-title", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify({ topic, count: titleCount }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate titles");
+      }
+
       const data = await response.json();
+
+      if (!data.titles || !Array.isArray(data.titles)) {
+        throw new Error("Invalid response format");
+      }
+
       setGeneratedTitles(data.titles);
     } catch (error) {
       console.error("Error generating titles:", error);
+      setError(error instanceof Error ? error.message : "Failed to generate titles");
+      setGeneratedTitles([]);
     } finally {
       setLoading(false);
     }
@@ -69,8 +86,26 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
     }
   };
 
+  const incrementCount = () => {
+    setTitleCount((prev) => Math.min(prev + 1, 3));
+  };
+
+  const decrementCount = () => {
+    setTitleCount((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleClose = () => {
+    setTopic("");
+    setGeneratedTitles([]);
+    setError(null);
+    setLoading(false);
+    setCreating(false);
+    setSelectedTitleIndex(null);
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-black/95 border-white/10 backdrop-blur">
         <DialogHeader>
           <div className="flex items-center justify-between">
@@ -79,7 +114,7 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
               variant="ghost"
               size="icon"
               className="text-white/70 hover:text-white"
-              onClick={onClose}
+              onClick={handleClose}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -90,21 +125,60 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
+          <div className="grid gap-4">
             <Input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="e.g., Digital Marketing"
               className="h-12 bg-black/50 text-white border-white/10"
             />
+
+            <div className="flex items-center gap-4">
+              <label className="text-sm text-white/70">Number of titles:</label>
+              <div className="flex items-center gap-2 bg-black/50 rounded-md border border-white/10 p-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={decrementCount}
+                  disabled={titleCount <= 1 || loading}
+                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="w-8 text-center text-white">{titleCount}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={incrementCount}
+                  disabled={titleCount >= 3 || loading}
+                  className="h-8 w-8 text-white/70 hover:text-white hover:bg-white/10"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             <Button
               onClick={generateTitles}
               disabled={!topic || loading}
               className="bg-primary hover:bg-primary/90"
             >
-              {loading ? "Generating..." : "Generate Titles"}
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span>Generating...</span>
+                </div>
+              ) : (
+                `Generate ${titleCount} Title${titleCount !== 1 ? "s" : ""}`
+              )}
             </Button>
           </div>
+
+          {error && (
+            <div className="text-red-400 text-sm p-3 rounded-md bg-red-500/10 border border-red-500/20">
+              {error}
+            </div>
+          )}
 
           {generatedTitles.length > 0 && (
             <div className="mt-4 space-y-2">

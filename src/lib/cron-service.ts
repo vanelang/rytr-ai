@@ -11,9 +11,6 @@ export function startCronJobs() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      const data = await response.json();
-      console.log("Cron job executed:", data);
     } catch (error) {
       console.error("Cron job failed:", error);
     }
