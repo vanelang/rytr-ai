@@ -107,17 +107,17 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="bg-black/95 border-white/10 backdrop-blur">
+        <button
+          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-black transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-white/10"
+          onClick={handleClose}
+        >
+          <X className="h-4 w-4 text-white" />
+          <span className="sr-only">Close</span>
+        </button>
+
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-white">Generate Article Title</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white/70 hover:text-white"
-              onClick={handleClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <DialogDescription className="text-white/70">
             Enter a topic to generate engaging article titles.
