@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { articles, ResearchSource, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 interface RouteParams {
   params: Promise<{ articleId: string }>;
@@ -48,44 +49,21 @@ export async function GET(request: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const { articleId } = await params;
-  const session = await getServerSession(authOptions);
+  try {
+    const { content } = await request.json();
+    const articleId = parseInt((await params).articleId);
 
-  if (!session?.user?.email) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    await db.update(articles).set({ content }).where(eq(articles.id, articleId));
+
+    // Revalidate both the blog list and the specific article page
+    revalidatePath("/blog");
+    revalidatePath(`/blog/${articleId}`);
+
+    return new Response(null, { status: 200 });
+  } catch (error) {
+    console.error("Error updating article:", error);
+    return new Response(null, { status: 500 });
   }
-
-  const dbUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email),
-  });
-
-  if (!dbUser) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
-
-  const { content } = await request.json();
-
-  if (typeof content !== "string") {
-    return new NextResponse("Invalid content", { status: 400 });
-  }
-
-  const article = await db.query.articles.findFirst({
-    where: and(eq(articles.id, parseInt(articleId)), eq(articles.userId, dbUser.id)),
-  });
-
-  if (!article) {
-    return new NextResponse("Not Found", { status: 404 });
-  }
-
-  await db
-    .update(articles)
-    .set({
-      content,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(articles.id, parseInt(articleId)), eq(articles.userId, dbUser.id)));
-
-  return new NextResponse(null, { status: 204 });
 }
 
 export async function DELETE(request: Request, { params }: RouteParams) {

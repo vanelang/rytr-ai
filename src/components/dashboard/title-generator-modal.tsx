@@ -169,7 +169,7 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
                   <span>Generating...</span>
                 </div>
               ) : (
-                `Generate ${titleCount} Title${titleCount !== 1 ? "s" : ""}`
+                `Generate ${titleCount === 1 ? "Heading" : "Headings"}`
               )}
             </Button>
           </div>

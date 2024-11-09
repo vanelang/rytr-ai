@@ -27,36 +27,42 @@ export async function GET(req: Request) {
 
         if (!article) continue;
 
-        const prompt = `Write a comprehensive article about: ${article.title}
-        
-        Follow this markdown structure:
-        1. Start with a compelling introduction (2-3 paragraphs)
-        2. Create 3-5 main sections with h2 headings
-        3. Under each main section:
-           - Add 2-3 subsections with h3 headings
-           - Include relevant bullet points or numbered lists
-           - Add emphasis using **bold** and *italic* text
-           - Use blockquotes for important points
-           - Include example code blocks if relevant
-        4. End with a strong conclusion
-        
-        Make it SEO-friendly, engaging, and well-structured.
-        Use proper markdown syntax for:
-        - Headings (# ## ###)
-        - Lists (- or 1. 2. 3.)
-        - Emphasis (**bold** and *italic*)
-        - Blockquotes (>)
-        - Code blocks (\`\`\`)
-        - Horizontal rules (---)
-        
-        Ensure the content is informative, accurate, and valuable to readers.
-        The article should be detailed and comprehensive, covering all important aspects of the topic.`;
+        const prompt = `You are a professional content writer known for creating engaging, easy-to-read articles. Write an article that flows naturally and keeps readers interested throughout.
+
+Key guidelines:
+- Write in a conversational, friendly tone
+- Keep paragraphs short (2-3 sentences max)
+- Use simple, clear language
+- Include real-world examples and practical insights
+- Break up text with subheadings for better readability
+
+Structure:
+- Hook readers with an engaging opening
+- Present your main points clearly
+- Support ideas with specific examples
+- End with key takeaways or a call to action
+
+Formatting:
+- Use ## for main sections
+- Use ### for subsections
+- Add *italic* for emphasis on key points
+- Use > for important quotes or takeaways
+- Include bullet points for lists
+- Add --- for section breaks
+
+Remember: Write as if you're explaining to a friend, be concise, and focus on providing value to the reader.`;
 
         const { text } = await generateText({
           model,
           prompt,
           temperature: 0.7,
           maxTokens: 2000,
+          messages: [
+            {
+              role: "system",
+              content: `You are writing an article about: ${article.title}. Focus on delivering valuable insights in a natural, engaging way.`,
+            },
+          ],
         });
 
         // Update article with generated content
