@@ -3,6 +3,7 @@ import { ArticleEditorSkeleton } from "@/components/dashboard/article-editor-ske
 
 // Create a placeholder user for loading state
 const placeholderUser = {
+  id: "",
   name: "",
   email: "",
   image: null,

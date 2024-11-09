@@ -78,7 +78,43 @@ export default {
             "--tw-prose-pre-bg": "rgb(45 45 45)",
             "--tw-prose-th-borders": "rgb(45 45 45)",
             "--tw-prose-td-borders": "rgb(45 45 45)",
+            code: {
+              backgroundColor: "rgb(45 45 45)",
+              borderRadius: "0.375rem",
+              paddingLeft: "0.375rem",
+              paddingRight: "0.375rem",
+              paddingTop: "0.125rem",
+              paddingBottom: "0.125rem",
+              fontSize: "0.875em",
+              fontFamily: "var(--font-ibm-plex-mono), monospace",
+            },
+            pre: {
+              backgroundColor: "rgb(45 45 45)",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              fontFamily: "var(--font-ibm-plex-mono), monospace",
+              code: {
+                backgroundColor: "transparent",
+                borderRadius: "0",
+                padding: "0",
+                fontSize: "0.875em",
+                fontWeight: "400",
+                fontFamily: "inherit",
+              },
+            },
           },
+        },
+      },
+      backgroundSize: {
+        "300%": "300%",
+      },
+      animation: {
+        gradient: "gradient 8s linear infinite",
+      },
+      keyframes: {
+        gradient: {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
         },
       },
     },

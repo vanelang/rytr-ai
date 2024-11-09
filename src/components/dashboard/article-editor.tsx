@@ -19,6 +19,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { markdownToHtml, htmlToMarkdown } from "@/lib/markdown";
+import { IBM_Plex_Mono } from "next/font/google";
 
 interface Article {
   id: number;
@@ -31,6 +32,12 @@ interface ArticleEditorProps {
   articleId: number;
   initialArticle: Article;
 }
+
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-mono",
+});
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
@@ -147,7 +154,13 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: {
+          HTMLAttributes: {
+            spellcheck: false,
+          },
+        },
+      }),
       Placeholder.configure({
         placeholder: "Start writing your article...",
       }),
@@ -155,8 +168,7 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
     content: content,
     editorProps: {
       attributes: {
-        class:
-          "prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 max-w-none focus:outline-none min-h-[500px] px-4 py-2",
+        class: `prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 prose-code:font-[var(--font-ibm-plex-mono),_monospace] prose-pre:font-[var(--font-ibm-plex-mono),_monospace] max-w-none focus:outline-none min-h-[500px] px-4 py-2`,
       },
     },
     onUpdate: ({ editor }) => {
