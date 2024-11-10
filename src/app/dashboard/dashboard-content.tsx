@@ -117,37 +117,48 @@ export function DashboardContent() {
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <DashboardHeader user={session.user} />
-      <main className="flex-1 container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
-        {!isUnlimited && (
-          <Card className="bg-white/5 border-white/10">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-4">
-                <Info className="h-5 w-5 text-primary mt-1 shrink-0" />
-                <div className="space-y-2 w-full">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-white">
-                      Monthly Article Usage: {currentMonthArticles.length} / {articleLimit}
-                    </p>
-                    <span className="text-xs text-white">{Math.round(usagePercentage)}%</span>
-                  </div>
-                  <Progress value={usagePercentage} className="h-2 bg-white/10" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="space-y-6">
+      <div className="flex-1 flex">
+        {/* Main Content */}
+        <main className="flex-1 container max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <ArticleList
             initialArticles={articles}
             onArticleCreated={handleArticleCreated}
             isGenerating={isGenerating}
             setIsGenerating={setIsGenerating}
           />
-        </div>
+        </main>
 
-        <UpgradeDialog isOpen={showUpgradeDialog} onClose={() => setShowUpgradeDialog(false)} />
-      </main>
+        {/* Side Panel */}
+        <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
+          {!isUnlimited && (
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-white">Usage Overview</h3>
+              <Card className="bg-white/5 border-white/10">
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Info className="h-4 w-4 text-primary" />
+                        <span className="text-sm text-white">Monthly Articles</span>
+                      </div>
+                      <span className="text-sm font-medium text-white">
+                        {currentMonthArticles.length} / {articleLimit}
+                      </span>
+                    </div>
+                    <Progress value={usagePercentage} className="h-2 bg-white/10" />
+                    <p className="text-xs text-white/80">
+                      {articleLimit - currentMonthArticles.length} articles remaining this month
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {/* Add more sidebar content here */}
+        </aside>
+      </div>
+
+      <UpgradeDialog isOpen={showUpgradeDialog} onClose={() => setShowUpgradeDialog(false)} />
     </div>
   );
 }
