@@ -37,15 +37,12 @@ export function Preview({ content }: PreviewProps) {
               {...props}
             />
           ),
-          code: ({ node, inline, ...props }) =>
-            inline ? (
-              <code className="bg-white/5 text-white rounded px-1.5 py-0.5" {...props} />
-            ) : (
-              <code
-                className="block bg-white/5 text-white rounded p-4 mb-4 overflow-x-auto"
-                {...props}
-              />
-            ),
+          code: ({ node, ...props }) => (
+            <code
+              className="block bg-white/5 text-white rounded p-4 mb-4 overflow-x-auto"
+              {...props}
+            />
+          ),
           pre: ({ node, ...props }) => (
             <pre className="bg-white/5 rounded-lg p-4 mb-4 overflow-x-auto" {...props} />
           ),
