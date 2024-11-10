@@ -1,6 +1,6 @@
 import { DashboardHeader } from "@/components/dashboard/header";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-config";
 import { redirect } from "next/navigation";
 import { ArticleEditor } from "@/components/dashboard/article-editor";
 import { db } from "@/db";

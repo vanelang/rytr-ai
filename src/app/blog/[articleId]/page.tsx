@@ -30,8 +30,12 @@ async function getArticle(id: number) {
   }
 }
 
-export default async function BlogArticlePage({ params }: { params: { articleId: string } }) {
-  const article = await getArticle(parseInt(params.articleId));
+export default async function BlogArticlePage({
+  params,
+}: {
+  params: Promise<{ articleId: string }>;
+}) {
+  const article = await getArticle(parseInt((await params).articleId));
 
   if (!article) {
     notFound();

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { articles, users } from "@/db/schema";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-config";
 import { eq } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { checkArticleLimit } from "@/middleware/check-article-limit";

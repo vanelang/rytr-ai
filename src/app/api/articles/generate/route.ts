@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { generateText } from "ai";
 import { getRandomModel } from "@/lib/ai-models";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth-config";
 import { searchWeb } from "@/lib/tavily";
 
 export async function POST(req: Request) {

@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { authOptions } from "../../auth/[...nextauth]/auth.config";
 import { db } from "@/db";
 import { articles, ResearchSource, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
