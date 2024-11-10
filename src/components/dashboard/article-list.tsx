@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, Loader2, Trash2 } from "lucide-react";
+import { FileText, Plus, Loader2, Trash2, XCircle } from "lucide-react";
 import { TitleGeneratorModal } from "./title-generator-modal";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,7 @@ import Link from "next/link";
 type Article = {
   id: number;
   title: string;
-  status: "draft" | "published";
+  status: "draft" | "published" | "failed";
   createdAt: Date;
 };
 
@@ -41,19 +41,26 @@ export function ArticleList({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const getArticleStatus = (article: Article) => {
-    if (article.status === "published") {
-      return {
-        label: "Published",
-        className: "bg-green-500/10 text-green-400",
-        icon: null,
-      };
+    switch (article.status) {
+      case "published":
+        return {
+          label: "Published",
+          className: "bg-green-500/10 text-green-400",
+          icon: null,
+        };
+      case "failed":
+        return {
+          label: "Failed",
+          className: "bg-red-500/10 text-red-400",
+          icon: <XCircle className="h-3 w-3 mr-1" />,
+        };
+      default:
+        return {
+          label: "Generating",
+          className: "bg-blue-500/10 text-blue-400",
+          icon: <Loader2 className="h-3 w-3 mr-1 animate-spin" />,
+        };
     }
-
-    return {
-      label: "Generating",
-      className: "bg-blue-500/10 text-blue-400",
-      icon: <Loader2 className="h-3 w-3 mr-1 animate-spin" />,
-    };
   };
 
   const handleTitleSelect = async (title: string) => {

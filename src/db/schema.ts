@@ -137,7 +137,7 @@ export const articles = pgTable("articles", {
     .references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   content: text("content"),
-  status: text("status", { enum: ["draft", "published"] })
+  status: text("status", { enum: ["draft", "published", "failed"] })
     .default("draft")
     .notNull(),
   seoScore: integer("seo_score"),
@@ -145,6 +145,7 @@ export const articles = pgTable("articles", {
     keywords: string[];
     description: string;
     readingTime: number;
+    error?: string;
   }>(),
   sources: json("sources").$type<ResearchSource[]>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),

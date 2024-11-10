@@ -29,17 +29,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Article not found" }, { status: 404 });
     }
 
-    const { text } = await generateText({
-      model: getRandomModel(),
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a professional content writer who creates engaging, well-structured articles with valuable insights.",
-        },
-        {
-          role: "user",
-          content: `Write an engaging article about "${article.title}".
+    try {
+      const { text } = await generateText({
+        model: getRandomModel(),
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a professional content writer who creates engaging, well-structured articles with valuable insights.",
+          },
+          {
+            role: "user",
+            content: `Write an engaging article about "${article.title}".
 
 Focus on:
 - Clear, concise explanations
@@ -63,30 +64,48 @@ Use markdown formatting:
 - --- for section breaks
 
 Keep paragraphs short and focused. Write as if explaining to an interested friend.`,
-        },
-      ],
-      temperature: 0.7,
-      maxTokens: 2000,
-    });
+          },
+        ],
+        temperature: 0.7,
+        maxTokens: 2000,
+      });
 
-    if (!text || text.length < 100) {
-      return NextResponse.json(
-        { error: "Generated content is too short or empty" },
-        { status: 500 }
-      );
+      if (!text || text.length < 100) {
+        throw new Error("Generated content is too short or empty");
+      }
+
+      // Update article with generated content
+      await db
+        .update(articles)
+        .set({
+          status: "published",
+          content: text,
+          updatedAt: new Date(),
+        })
+        .where(eq(articles.id, articleId));
+
+      return NextResponse.json({ success: true, content: text });
+    } catch (generationError) {
+      // Update article status to failed
+      await db
+        .update(articles)
+        .set({
+          status: "failed",
+          updatedAt: new Date(),
+          metadata: {
+            keywords: article.metadata?.keywords || [],
+            description: article.metadata?.description || "",
+            readingTime: article.metadata?.readingTime || 0,
+            error:
+              generationError instanceof Error
+                ? generationError.message
+                : "Content generation failed",
+          },
+        })
+        .where(eq(articles.id, articleId));
+
+      throw generationError; // Re-throw to be caught by outer catch block
     }
-
-    // Update article with generated content
-    await db
-      .update(articles)
-      .set({
-        status: "published",
-        content: text,
-        updatedAt: new Date(),
-      })
-      .where(eq(articles.id, articleId));
-
-    return NextResponse.json({ success: true, content: text });
   } catch (error) {
     console.error("Content generation error:", error);
     return NextResponse.json(
