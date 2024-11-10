@@ -6,6 +6,7 @@ import { generateText } from "ai";
 import { getRandomModel } from "@/lib/ai-models";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { searchWeb } from "@/lib/tavily";
 
 export async function POST(req: Request) {
   try {
@@ -30,17 +31,34 @@ export async function POST(req: Request) {
     }
 
     try {
+      // Search for relevant information
+      const searchResults = await searchWeb(article.title);
+
+      // Format search results for the AI prompt
+      const sourcesContext = searchResults
+        .map(
+          (result, index) => `
+Source ${index + 1}:
+Title: ${result.title}
+Content: ${result.content}
+URL: ${result.url}
+`
+        )
+        .join("\n\n");
+
       const { text } = await generateText({
         model: getRandomModel(),
         messages: [
           {
             role: "system",
             content:
-              "You are a professional content writer who creates engaging, well-structured articles with valuable insights.",
+              "You are a professional content writer who creates engaging, well-structured articles with valuable insights. Use the provided sources to create accurate, well-researched content.",
           },
           {
             role: "user",
-            content: `Write an engaging article about "${article.title}".
+            content: `Write an engaging article about "${article.title}" using the following sources:
+
+${sourcesContext}
 
 Focus on:
 - Clear, concise explanations
@@ -48,6 +66,7 @@ Focus on:
 - Natural, conversational tone
 - Well-structured content
 - Valuable takeaways
+- Accurate information from sources
 
 Structure:
 1. Engaging introduction
@@ -74,12 +93,18 @@ Keep paragraphs short and focused. Write as if explaining to an interested frien
         throw new Error("Generated content is too short or empty");
       }
 
-      // Update article with generated content
+      // Update article with generated content and sources
       await db
         .update(articles)
         .set({
           status: "published",
           content: text,
+          sources: searchResults.map((result) => ({
+            title: result.title,
+            summary: result.content || "",
+            source: "web",
+            url: result.url,
+          })),
           updatedAt: new Date(),
         })
         .where(eq(articles.id, articleId));

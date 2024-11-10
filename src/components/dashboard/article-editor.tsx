@@ -31,12 +31,23 @@ import BulletList from "@tiptap/extension-bullet-list";
 import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import Blockquote from "@tiptap/extension-blockquote";
+import { ResearchSource } from "@/db/schema";
 
 interface Article {
   id: number;
   title: string;
   content: string | null;
-  status: "draft" | "published";
+  status: "draft" | "published" | "failed";
+  metadata?: {
+    keywords: string[];
+    description: string;
+    readingTime: number;
+    error?: string;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+  sources?: ResearchSource[] | null;
 }
 
 interface ArticleEditorProps {
@@ -248,6 +259,17 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
     }
   }, [content, article, router]);
 
+  const getStatusDisplay = (status: Article["status"]) => {
+    switch (status) {
+      case "published":
+        return <span className="text-green-400">Published</span>;
+      case "failed":
+        return <span className="text-red-400">Failed</span>;
+      default:
+        return <span className="text-yellow-400">Draft</span>;
+    }
+  };
+
   if (!article) {
     return null;
   }
@@ -257,16 +279,7 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
         <h1 className="text-lg sm:text-xl font-semibold text-white">{article.title}</h1>
         <div className="flex items-center gap-4">
-          {article.status === "draft" ? (
-            <div className="flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-yellow-500/10 text-yellow-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Processing
-            </div>
-          ) : (
-            <span className="rounded-full px-3 py-1 text-xs font-medium bg-green-500/10 text-green-400">
-              Published
-            </span>
-          )}
+          {getStatusDisplay(article.status)}
           <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             <span className="ml-2 hidden sm:inline">Save</span>
