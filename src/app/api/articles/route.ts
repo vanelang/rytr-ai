@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { articles, users } from "@/db/schema";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-config";
 import { eq, desc } from "drizzle-orm";
+import { authOptions } from "../auth/[...nextauth]/auth.config";
 
 export async function GET() {
   try {

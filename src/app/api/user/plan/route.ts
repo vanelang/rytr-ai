@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth-config";
+import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import { eq } from "drizzle-orm";
 
 export async function GET() {

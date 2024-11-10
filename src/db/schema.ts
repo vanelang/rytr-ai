@@ -11,29 +11,9 @@ import {
   real,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { eq, relations } from "drizzle-orm";
-import type { DefaultSession } from "next-auth";
-import { randomUUID } from "crypto";
-import { Adapter } from "next-auth/adapters";
-import { db } from ".";
+import { relations } from "drizzle-orm";
+import type { AdapterAccount } from "next-auth/adapters";
 
-// Define custom types for NextAuth
-type UserId = string;
-interface Account {
-  userId: UserId;
-  type: string;
-  provider: string;
-  providerAccountId: string;
-  refresh_token?: string;
-  access_token?: string;
-  expires_at?: number;
-  token_type?: string;
-  scope?: string;
-  id_token?: string;
-  session_state?: string;
-}
-
-// Add this new interface
 export interface ResearchSource {
   title: string;
   summary: string;
@@ -41,8 +21,8 @@ export interface ResearchSource {
   url?: string;
 }
 
-// Add these types
 export type PlanType = "free" | "starter" | "unlimited";
+export type SubscriptionStatus = "active" | "cancelled" | "expired" | "paused" | "past_due";
 
 export interface PlanFeatures {
   articleLimit: number;
@@ -52,7 +32,7 @@ export interface PlanFeatures {
   apiAccess: boolean;
 }
 
-// Add plans table
+// Plans table
 export const plans = pgTable("plans", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -63,29 +43,7 @@ export const plans = pgTable("plans", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Add subscriptions table
-export const subscriptions = pgTable("subscriptions", {
-  id: serial("id").primaryKey(),
-  userId: text("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  planId: integer("plan_id")
-    .references(() => plans.id)
-    .notNull(),
-  status: text("status", { enum: ["active", "cancelled", "expired"] })
-    .notNull()
-    .default("active"),
-  currentPeriodStart: timestamp("current_period_start").notNull(),
-  currentPeriodEnd: timestamp("current_period_end").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  cancelAt: timestamp("cancel_at"),
-  canceledAt: timestamp("canceled_at"),
-  stripeCustomerId: text("stripe_customer_id"),
-  stripeSubscriptionId: text("stripe_subscription_id"),
-});
-
-// Users table - Make planId optional
+// Users table
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
@@ -95,6 +53,41 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   planId: integer("plan_id").references(() => plans.id),
+  subscriptionId: text("subscription_id"), // Will be set after subscriptions table is defined
+  customerId: text("customer_id"), // Optional LemonSqueezy customer ID
+});
+
+// Subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: text("id").primaryKey(), // LemonSqueezy subscription ID
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  planId: integer("plan_id")
+    .references(() => plans.id)
+    .notNull(),
+  status: text("status", {
+    enum: ["active", "cancelled", "expired", "paused", "past_due"],
+  }).notNull(),
+  variantId: text("variant_id").notNull(), // LemonSqueezy variant ID
+  customerId: text("customer_id").notNull(), // LemonSqueezy customer ID
+  currentPeriodStart: timestamp("current_period_start").notNull(),
+  currentPeriodEnd: timestamp("current_period_end").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  canceledAt: timestamp("canceled_at"),
+  pausedAt: timestamp("paused_at"),
+  renewsAt: timestamp("renews_at"),
+});
+
+// Add subscription ID foreign key after subscriptions table is defined
+export const usersToSubscriptions = pgTable("users_to_subscriptions", {
+  userId: text("user_id")
+    .references(() => users.id)
+    .notNull(),
+  subscriptionId: text("subscription_id")
+    .references(() => subscriptions.id)
+    .notNull(),
 });
 
 // NextAuth accounts table
@@ -153,7 +146,7 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at"),
 });
 
-// Article versions for revision history
+// Article versions table
 export const articleVersions = pgTable("article_versions", {
   id: serial("id").primaryKey(),
   articleId: integer("article_id")
@@ -166,7 +159,7 @@ export const articleVersions = pgTable("article_versions", {
     .references(() => users.id),
 });
 
-// Article analytics
+// Article analytics table
 export const articleAnalytics = pgTable("article_analytics", {
   id: serial("id").primaryKey(),
   articleId: integer("article_id")
@@ -185,6 +178,20 @@ export const plansRelations = relations(plans, ({ many }) => ({
   subscriptions: many(subscriptions),
 }));
 
+export const usersRelations = relations(users, ({ one, many }) => ({
+  articles: many(articles),
+  accounts: many(accounts),
+  sessions: many(sessions),
+  plan: one(plans, {
+    fields: [users.planId],
+    references: [plans.id],
+  }),
+  subscription: one(subscriptions, {
+    fields: [users.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));
+
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   user: one(users, {
     fields: [subscriptions.userId],
@@ -194,17 +201,6 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     fields: [subscriptions.planId],
     references: [plans.id],
   }),
-}));
-
-export const usersRelations = relations(users, ({ one, many }) => ({
-  articles: many(articles),
-  accounts: many(accounts),
-  sessions: many(sessions),
-  plan: one(plans, {
-    fields: [users.planId],
-    references: [plans.id],
-  }),
-  subscription: many(subscriptions),
 }));
 
 export const articlesRelations = relations(articles, ({ one, many }) => ({

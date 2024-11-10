@@ -32,41 +32,99 @@ export function UpgradeDialog({ isOpen, onClose, onUpgradeComplete }: UpgradeDia
   const [loading, setLoading] = useState(true);
   const [changingPlan, setChangingPlan] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        setLoading(true);
-        const [plansResponse, userPlanResponse] = await Promise.all([
-          fetch("/api/plans"),
-          fetch("/api/user/plan"),
-        ]);
-
-        if (!plansResponse.ok || !userPlanResponse.ok) {
-          throw new Error("Failed to fetch plans");
-        }
-
-        const plansData = await plansResponse.json();
-        const userPlanData = await userPlanResponse.json();
-
-        setPlans(plansData.plans);
-        setCurrentPlan(userPlanData.plan);
-      } catch (error) {
-        console.error("Error fetching plans:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (isOpen) {
-      fetchPlans();
+      fetchUserData();
     }
   }, [isOpen]);
 
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      // Fetch plans and current user plan in parallel
+      const [plansResponse, userPlanResponse] = await Promise.all([
+        fetch("/api/plans"),
+        fetch("/api/user/plan"),
+      ]);
+
+      const plansData = await plansResponse.json();
+      const userPlanData = await userPlanResponse.json();
+
+      if (plansData.plans) {
+        setPlans(plansData.plans);
+      }
+
+      if (userPlanData.plan) {
+        setCurrentPlan(userPlanData.plan);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError("Failed to load plans");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpgrade = async (planId: number) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create checkout session");
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL received");
+      }
+    } catch (error) {
+      console.error("Upgrade error:", error);
+      setError(error instanceof Error ? error.message : "Failed to create checkout session");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handlePlanChange = async (planId: number) => {
+    const selectedPlan = plans.find((p) => p.id === planId);
+    if (!selectedPlan) return;
+
+    // If it's a paid plan, redirect to checkout
+    if (selectedPlan.price > 0) {
+      await handleUpgrade(planId);
+      return;
+    }
+
+    // For downgrading to free plan
     try {
       setError(null);
       setChangingPlan(planId);
+
+      // First, cancel the subscription at LemonSqueezy
+      const cancelResponse = await fetch("/api/subscription/cancel", {
+        method: "POST",
+      });
+
+      if (!cancelResponse.ok) {
+        const cancelData = await cancelResponse.json();
+        throw new Error(cancelData.error || "Failed to cancel subscription");
+      }
+
+      // Then change the plan to free
       const response = await fetch("/api/user/change-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +138,7 @@ export function UpgradeDialog({ isOpen, onClose, onUpgradeComplete }: UpgradeDia
       }
 
       onUpgradeComplete();
+      await fetchUserData(); // Refresh the data after successful change
     } catch (error) {
       console.error("Error changing plan:", error);
       setError(error instanceof Error ? error.message : "Failed to change plan");

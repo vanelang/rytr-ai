@@ -4,9 +4,10 @@ import { db } from "@/db";
 import { users, sessions, accounts, plans } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import type { Adapter } from "next-auth/adapters";
+import type { Adapter, AdapterAccount, AdapterSession, AdapterUser } from "next-auth/adapters";
+
 const customAdapter: Adapter = {
-  async createUser(user: any) {
+  async createUser(user: Omit<AdapterUser, "id">): Promise<AdapterUser> {
     try {
       const freePlan = await db.query.plans.findFirst({
         where: eq(plans.type, "free"),
@@ -20,50 +21,80 @@ const customAdapter: Adapter = {
       await db.insert(users).values({
         id,
         name: user.name,
-        email: user.email!,
+        email: user.email,
         image: user.image,
-        emailVerified: new Date(),
+        emailVerified: user.emailVerified,
         planId: freePlan.id,
+        subscriptionId: null,
+        customerId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       const dbUser = await db.query.users.findFirst({
         where: eq(users.id, id),
       });
 
-      // Create initial session for new user
-      if (dbUser) {
-        const sessionToken = randomUUID();
-        const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-        await db.insert(sessions).values({
-          sessionToken,
-          userId: dbUser.id,
-          expires,
-        });
+      if (!dbUser) {
+        throw new Error("Failed to create user");
       }
 
-      return dbUser!;
+      // Create initial session for new user
+      const sessionToken = randomUUID();
+      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      await db.insert(sessions).values({
+        sessionToken,
+        userId: dbUser.id,
+        expires,
+      });
+
+      return {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        emailVerified: dbUser.emailVerified,
+        image: dbUser.image,
+      };
     } catch (error) {
       console.error("Error creating user:", error);
       throw error;
     }
   },
 
-  async getUser(id) {
+  async getUser(id: string): Promise<AdapterUser | null> {
     const dbUser = await db.query.users.findFirst({
       where: eq(users.id, id),
     });
-    return dbUser || null;
+
+    if (!dbUser) return null;
+
+    return {
+      id: dbUser.id,
+      name: dbUser.name,
+      email: dbUser.email,
+      emailVerified: dbUser.emailVerified,
+      image: dbUser.image,
+    };
   },
 
-  async getUserByEmail(email) {
+  async getUserByEmail(email: string): Promise<AdapterUser | null> {
     const dbUser = await db.query.users.findFirst({
       where: eq(users.email, email),
     });
-    return dbUser || null;
+
+    if (!dbUser) return null;
+
+    return {
+      id: dbUser.id,
+      name: dbUser.name,
+      email: dbUser.email,
+      emailVerified: dbUser.emailVerified,
+      image: dbUser.image,
+    };
   },
 
-  async getUserByAccount({ providerAccountId, provider }) {
+  async getUserByAccount({ providerAccountId, provider }): Promise<AdapterUser | null> {
     const account = await db.query.accounts.findFirst({
       where: and(
         eq(accounts.providerAccountId, providerAccountId),
@@ -73,60 +104,76 @@ const customAdapter: Adapter = {
 
     if (!account) return null;
 
-    const user = await db.query.users.findFirst({
+    const dbUser = await db.query.users.findFirst({
       where: eq(users.id, account.userId),
     });
-    return user || null;
+
+    if (!dbUser) return null;
+
+    return {
+      id: dbUser.id,
+      name: dbUser.name,
+      email: dbUser.email,
+      emailVerified: dbUser.emailVerified,
+      image: dbUser.image,
+    };
   },
 
-  async linkAccount(account: any) {
-    try {
-      await db.insert(accounts).values({
-        userId: account.userId,
-        type: account.type,
-        provider: account.provider,
-        providerAccountId: account.providerAccountId,
-        refresh_token: account.refresh_token,
-        access_token: account.access_token,
-        expires_at: account.expires_at,
-        token_type: account.token_type,
-        scope: account.scope,
-        id_token: account.id_token,
-        session_state: account.session_state,
-      });
+  async updateUser(user: Partial<AdapterUser> & { id: string }): Promise<AdapterUser> {
+    await db
+      .update(users)
+      .set({
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
 
-      // Create or update session after linking account
-      const sessionToken = randomUUID();
-      const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-      // Delete any existing sessions
-      await db.delete(sessions).where(eq(sessions.userId, account.userId));
-
-      // Create new session
-      await db.insert(sessions).values({
-        sessionToken,
-        userId: account.userId,
-        expires,
-      });
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async createSession({ sessionToken, userId, expires }) {
-    await db.insert(sessions).values({
-      sessionToken,
-      userId,
-      expires,
+    const dbUser = await db.query.users.findFirst({
+      where: eq(users.id, user.id),
     });
 
-    const dbSession = await db.query.sessions.findFirst({
-      where: eq(sessions.sessionToken, sessionToken),
-    });
-    return dbSession!;
+    if (!dbUser) throw new Error("User not found");
+
+    return {
+      id: dbUser.id,
+      name: dbUser.name,
+      email: dbUser.email,
+      emailVerified: dbUser.emailVerified,
+      image: dbUser.image,
+    };
   },
 
-  async getSessionAndUser(sessionToken) {
+  async linkAccount(account: AdapterAccount): Promise<void> {
+    await db.insert(accounts).values({
+      userId: account.userId,
+      type: account.type,
+      provider: account.provider,
+      providerAccountId: account.providerAccountId,
+      refresh_token: account.refresh_token,
+      access_token: account.access_token,
+      expires_at: account.expires_at,
+      token_type: account.token_type,
+      scope: account.scope,
+      id_token: account.id_token,
+      session_state: account.session_state,
+    });
+  },
+
+  async createSession(session: {
+    sessionToken: string;
+    userId: string;
+    expires: Date;
+  }): Promise<AdapterSession> {
+    await db.insert(sessions).values(session);
+    return session;
+  },
+
+  async getSessionAndUser(
+    sessionToken: string
+  ): Promise<{ session: AdapterSession; user: AdapterUser } | null> {
     const dbSession = await db.query.sessions.findFirst({
       where: eq(sessions.sessionToken, sessionToken),
     });
@@ -141,7 +188,13 @@ const customAdapter: Adapter = {
 
     return {
       session: dbSession,
-      user: dbUser,
+      user: {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        emailVerified: dbUser.emailVerified,
+        image: dbUser.image,
+      },
     };
   },
 
@@ -156,23 +209,6 @@ const customAdapter: Adapter = {
 
   async deleteSession(sessionToken) {
     await db.delete(sessions).where(eq(sessions.sessionToken, sessionToken));
-  },
-
-  async updateUser(user) {
-    await db
-      .update(users)
-      .set({
-        name: user.name,
-        email: user.email,
-        image: user.image,
-        emailVerified: user.emailVerified,
-      })
-      .where(eq(users.id, user.id));
-
-    const dbUser = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-    });
-    return dbUser!;
   },
 
   async unlinkAccount({ providerAccountId, provider }) {
