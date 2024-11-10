@@ -9,11 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, Loader2, Trash2, Clock } from "lucide-react";
+import { FileText, Plus, Loader2, Trash2 } from "lucide-react";
 import { TitleGeneratorModal } from "./title-generator-modal";
-import { format, formatDistance } from "date-fns";
+import { format } from "date-fns";
 import { useRouter } from "next/navigation";
-import moment from "moment";
 import Link from "next/link";
 
 type Article = {
@@ -26,38 +25,20 @@ type Article = {
 interface ArticleListProps {
   initialArticles: Article[];
   onArticleCreated: () => Promise<void>;
-  processingArticles: number[];
+  isGenerating: boolean;
+  setIsGenerating: (value: boolean) => void;
 }
 
 export function ArticleList({
   initialArticles,
   onArticleCreated,
-  processingArticles,
+  isGenerating,
+  setIsGenerating,
 }: ArticleListProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteArticleId, setDeleteArticleId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const isInQueue = (createdAt: Date) => {
-    const created = moment(createdAt);
-    const nextMinute = moment(created).startOf("minute").add(1, "minutes");
-    return moment().isBefore(nextMinute);
-  };
-
-  const getQueueEta = (createdAt: Date) => {
-    const created = new Date(createdAt);
-    const nextMinute = new Date(created);
-    nextMinute.setMinutes(nextMinute.getMinutes() + 1);
-    nextMinute.setSeconds(0);
-    nextMinute.setMilliseconds(0);
-
-    const timeLeft = formatDistance(nextMinute, new Date(), {
-      addSuffix: true,
-      includeSeconds: true,
-    });
-    return timeLeft;
-  };
 
   const getArticleStatus = (article: Article) => {
     if (article.status === "published") {
@@ -65,35 +46,19 @@ export function ArticleList({
         label: "Published",
         className: "bg-green-500/10 text-green-400",
         icon: null,
-        eta: null,
-      };
-    }
-
-    if (isInQueue(article.createdAt)) {
-      const eta = getQueueEta(article.createdAt);
-      return {
-        label: "In Queue",
-        className: "bg-blue-500/10 text-blue-400",
-        icon: <Clock className="h-3 w-3 mr-1" />,
-        eta: `Processing ${eta}`,
       };
     }
 
     return {
-      label: "Processing",
-      className: "bg-yellow-500/10 text-yellow-400",
+      label: "Generating",
+      className: "bg-blue-500/10 text-blue-400",
       icon: <Loader2 className="h-3 w-3 mr-1 animate-spin" />,
-      eta: null,
     };
   };
 
   const handleTitleSelect = async (title: string) => {
     setIsModalOpen(false);
     await onArticleCreated();
-  };
-
-  const handleArticleClick = (articleId: number) => {
-    router.push(`/dashboard/articles/${articleId}`);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, articleId: number) => {
@@ -128,15 +93,18 @@ export function ArticleList({
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Your Articles</h1>
-          <p className="mt-1 text-sm text-white/70">Create and manage your AI-powered content</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Your Articles
+          </h1>
+          <p className="mt-1 text-sm text-white/80">Create and manage your AI-powered content</p>
         </div>
         <Button
-          className="bg-primary hover:bg-primary/90 w-full sm:w-auto"
+          className="bg-primary hover:bg-primary/90 w-full sm:w-auto text-white"
           onClick={() => setIsModalOpen(true)}
+          disabled={isGenerating}
         >
           <Plus className="mr-2 h-4 w-4" />
-          <span>Create New Article</span>
+          <span>{isGenerating ? "Generating..." : "Create New Article"}</span>
         </Button>
       </div>
 
@@ -145,11 +113,13 @@ export function ArticleList({
           <div className="relative w-full max-w-[240px] aspect-square">
             <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-purple-500/20 blur-3xl" />
             <div className="relative flex h-full items-center justify-center rounded-xl border border-white/10 bg-black/50 p-8 backdrop-blur">
-              <FileText className="h-16 sm:h-20 w-16 sm:w-20 text-white/20" />
+              <FileText className="h-16 sm:h-20 w-16 sm:w-20 text-white/40" />
             </div>
           </div>
-          <h2 className="text-lg sm:text-xl font-semibold text-center">No articles yet</h2>
-          <p className="text-center text-sm sm:text-base text-white/70">
+          <h2 className="text-lg sm:text-xl font-semibold text-white text-center">
+            No articles yet
+          </h2>
+          <p className="text-center text-sm sm:text-base text-white/80">
             Get started by creating a new article.
             <br className="hidden sm:block" />
             Your AI-powered writing journey begins here.
@@ -169,10 +139,9 @@ export function ArticleList({
               >
                 <div>
                   <h3 className="font-medium text-white line-clamp-2">{article.title}</h3>
-                  <p className="mt-1 text-xs sm:text-sm text-white/70">
+                  <p className="mt-1 text-xs sm:text-sm text-white/80">
                     Created {format(new Date(article.createdAt), "PPP")}
                   </p>
-                  {status.eta && <p className="mt-1 text-xs text-blue-400/70">{status.eta}</p>}
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-4">
                   <div
@@ -184,11 +153,8 @@ export function ArticleList({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDeleteClick(e, article.id);
-                    }}
+                    className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-white/80 hover:text-white"
+                    onClick={(e) => handleDeleteClick(e, article.id)}
                   >
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </Button>
