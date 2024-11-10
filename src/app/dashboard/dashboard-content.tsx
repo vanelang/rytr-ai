@@ -5,6 +5,10 @@ import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
+import { Progress } from "@/components/ui/progress";
+import { Info } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { UpgradeDialog } from "@/components/dashboard/upgrade-dialog";
 
 interface Article {
   id: number;
@@ -15,13 +19,48 @@ interface Article {
   sources?: any[];
 }
 
+interface UserPlan {
+  features: {
+    articleLimit: number;
+  };
+}
+
 export function DashboardContent() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [articles, setArticles] = useState<Article[]>([]);
+  const [userPlan, setUserPlan] = useState<UserPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [processingArticles, setProcessingArticles] = useState<number[]>([]);
-  const [recentArticles, setRecentArticles] = useState<number[]>([]); // Track recently created articles
+  const [recentArticles, setRecentArticles] = useState<number[]>([]);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+
+  // Get current month's articles
+  const getCurrentMonthArticles = () => {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    return articles.filter((article) => new Date(article.createdAt) >= startOfMonth);
+  };
+
+  // Fetch user's plan
+  const fetchUserPlan = async () => {
+    try {
+      const response = await fetch("/api/user/plan");
+      if (!response.ok) throw new Error("Failed to fetch user plan");
+      const data = await response.json();
+      setUserPlan(data.plan);
+    } catch (error) {
+      console.error("Error fetching user plan:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchUserPlan();
+    }
+  }, [session]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -138,8 +177,16 @@ export function DashboardContent() {
 
   // Add article to recent list when created
   const handleArticleCreated = async () => {
+    // Check if user has reached the limit
+    const currentMonthArticles = getCurrentMonthArticles();
+    const articleLimit = userPlan?.features.articleLimit || 0;
+
+    if (!isUnlimited && currentMonthArticles.length >= articleLimit) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     await fetchArticles();
-    // Add newly created articles to recent list
     const newArticles = articles
       .filter((article) => article.status === "draft")
       .map((article) => article.id);
@@ -159,16 +206,59 @@ export function DashboardContent() {
     return null;
   }
 
+  const currentMonthArticles = getCurrentMonthArticles();
+  const articleLimit = userPlan?.features.articleLimit || 0;
+  const isUnlimited = articleLimit === -1;
+  const articlesUsed = currentMonthArticles.length;
+  const articlesRemaining = isUnlimited ? -1 : Math.max(0, articleLimit - articlesUsed);
+  const usagePercentage = isUnlimited ? 0 : (articlesUsed / articleLimit) * 100;
+
   return (
     <div className="flex min-h-screen flex-col bg-black text-white">
       <DashboardHeader user={session.user} />
       <main className="flex-1">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Article Usage Stats */}
+          <Card className="mb-8 bg-white/5 border-white/10">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-medium text-white">Article Usage</h2>
+                <span className="text-xs text-white/70">
+                  {isUnlimited
+                    ? "Unlimited Articles"
+                    : `${articlesUsed} of ${articleLimit} articles used this month`}
+                </span>
+              </div>
+              {!isUnlimited && (
+                <>
+                  <Progress value={usagePercentage} className="h-2 mb-2" />
+                  <div className="flex items-center gap-2 text-xs text-white/70">
+                    <Info className="h-4 w-4" />
+                    {articlesRemaining === 0 ? (
+                      <span className="text-yellow-400">
+                        You've reached your monthly article limit. Consider upgrading your plan for
+                        more articles.
+                      </span>
+                    ) : (
+                      <span>
+                        {articlesRemaining} article{articlesRemaining !== 1 ? "s" : ""} remaining
+                        this month
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           <ArticleList
             initialArticles={articles}
             onArticleCreated={handleArticleCreated}
             processingArticles={processingArticles}
           />
+
+          {/* Add Upgrade Dialog */}
+          <UpgradeDialog isOpen={showUpgradeDialog} onClose={() => setShowUpgradeDialog(false)} />
         </div>
       </main>
     </div>

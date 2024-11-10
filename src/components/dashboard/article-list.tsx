@@ -25,10 +25,15 @@ type Article = {
 
 interface ArticleListProps {
   initialArticles: Article[];
-  onArticleCreated: () => void;
+  onArticleCreated: () => Promise<void>;
+  processingArticles: number[];
 }
 
-export function ArticleList({ initialArticles, onArticleCreated }: ArticleListProps) {
+export function ArticleList({
+  initialArticles,
+  onArticleCreated,
+  processingArticles,
+}: ArticleListProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteArticleId, setDeleteArticleId] = useState<number | null>(null);

@@ -22,6 +22,41 @@
       "when": 1731083382023,
       "tag": "0002_late_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1731211382141,
+      "tag": "0003_cool_rage",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1731211787069,
+      "tag": "0004_peaceful_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1731211890089,
+      "tag": "0005_sour_mephistopheles",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1731212071840,
+      "tag": "0006_abnormal_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1731223333285,
+      "tag": "0007_secret_junta",
+      "breakpoints": true
     }
   ]
 }

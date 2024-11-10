@@ -1,0 +1,1 @@
+ALTER TABLE "content_generation_queue" ADD COLUMN "metadata" jsonb DEFAULT '{"retryCount":0}'::jsonb;

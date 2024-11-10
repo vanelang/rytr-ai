@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { groq } from "@ai-sdk/groq";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-
-const model = groq("mixtral-8x7b-32768");
+import { getRandomModel } from "@/lib/ai-models";
 
 export async function POST(req: Request) {
   try {
@@ -22,111 +20,87 @@ export async function POST(req: Request) {
 
     const titleCount = Math.min(Math.max(parseInt(count) || 3, 1), 5);
 
-    const prompt = `Generate ${titleCount} blog titles about "${topic}". Format as a JSON array of strings.
+    const prompt = `Generate ${titleCount} engaging blog titles about "${topic}". Return ONLY a JSON array of strings.
 
-Key requirements:
-- Natural, conversational titles
+Example response format:
+["Title One", "Title Two", "Title Three"]
+
+Requirements for each title:
+- Natural and conversational tone
+- 50-60 characters long
+- Include relevant keywords
 - Clear value proposition
-- SEO-friendly keywords
-- 40-60 characters long
-- No clickbait or hype
-- No numbers at start
-- No special characters
+- No clickbait or sensationalism
+- No special characters or excessive punctuation
+- No numbers at the start
+- Use proper title case
 
-Style:
-- Write like a professional journalist
-- Be specific and direct
-- Focus on reader benefits
-- Use active voice
-- Sound authoritative but approachable
-
-Example response:
-[
-  "Essential Guide to Cloud Computing Architecture",
-  "Modern JavaScript Best Practices for Developers",
-  "Understanding GraphQL in Web Applications"
-]
-
-Return ONLY the JSON array.`;
+Remember: Return ONLY the JSON array, no additional text or explanation.`;
 
     const { text } = await generateText({
-      model,
-      prompt,
-      temperature: 0.6, // Reduced for more consistent output
-      maxTokens: 300,
+      model: getRandomModel(),
+      temperature: 0.7,
+      maxTokens: 500,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a professional content writer who creates clear, engaging titles. Return only valid JSON arrays.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
     });
 
+    // Clean and parse the response
     try {
-      // Clean and parse the response
-      const cleanText = text
-        .replace(/```json\n?|```\n?/g, "")
-        .replace(/[\u201C\u201D]/g, '"') // Replace smart quotes
-        .trim();
+      // Remove any markdown code blocks and extra whitespace
+      const cleanText = text.replace(/```json\n?|```\n?/g, "").trim();
 
-      // Ensure valid JSON array format
-      const jsonText =
-        cleanText.startsWith("[") && cleanText.endsWith("]") ? cleanText : `[${cleanText}]`;
+      // Ensure the text starts and ends with brackets
+      const jsonText = cleanText.startsWith("[") ? cleanText : `[${cleanText}]`;
 
       let titles = JSON.parse(jsonText) as string[];
 
-      // Validate and clean titles
+      // Validate the response
       if (!Array.isArray(titles)) {
         titles = [titles].filter((title) => typeof title === "string");
       }
 
+      // Clean up titles and ensure they're strings
       titles = titles
         .filter((title) => typeof title === "string")
-        .map(
-          (title) =>
-            title
-              .trim()
-              .replace(/^["'\d.\-\[\]]+/, "") // Remove leading special chars
-              .replace(/["'\[\]]+$/, "") // Remove trailing special chars
-        )
-        .filter(
-          (title) =>
-            title.length >= 20 && // Minimum length
-            title.length <= 60 && // Maximum length
-            !/^[0-9]/.test(title) // No numbers at start
-        )
+        .map((title) => title.trim())
+        .filter((title) => title.length > 0)
         .slice(0, titleCount);
 
       if (titles.length === 0) {
-        return NextResponse.json(
-          {
-            error: "Could not generate appropriate titles. Please try again.",
-          },
-          { status: 422 }
-        );
+        throw new Error("No valid titles generated");
       }
 
       return NextResponse.json({ titles });
     } catch (parseError) {
-      console.error("Title parsing error:", parseError, "Raw text:", text);
+      console.error("Parsing error:", parseError, "Raw text:", text);
 
-      // Fallback parsing for non-JSON responses
+      // Fallback parsing method
       const titles = text
         .split("\n")
         .map((line) => line.trim())
         .filter(
           (line) =>
-            line.length >= 20 &&
-            line.length <= 60 &&
+            line.length > 0 &&
             !line.startsWith("[") &&
             !line.startsWith("]") &&
-            !line.startsWith("```") &&
-            !/^[0-9]/.test(line)
+            !line.startsWith("```")
         )
-        .map((line) => line.replace(/^["'\d.\-\[\]]+|["'\[\]]+$/g, "").trim())
+        .map((line) => line.replace(/^["'\d.\-\[\]]+|["'\[\]]$/g, "").trim())
+        .filter((line) => line.length > 0)
         .slice(0, titleCount);
 
       if (titles.length === 0) {
-        return NextResponse.json(
-          {
-            error: "Failed to generate titles. Please try a different topic.",
-          },
-          { status: 422 }
-        );
+        return NextResponse.json({ error: "Failed to generate valid titles" }, { status: 500 });
       }
 
       return NextResponse.json({ titles });
@@ -135,7 +109,7 @@ Return ONLY the JSON array.`;
     console.error("Title generation error:", error);
     return NextResponse.json(
       {
-        error: "An unexpected error occurred",
+        error: "Failed to generate titles",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }

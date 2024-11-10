@@ -9,9 +9,13 @@ import {
   integer,
   primaryKey,
   real,
+  jsonb,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { eq, relations } from "drizzle-orm";
 import type { DefaultSession } from "next-auth";
+import { randomUUID } from "crypto";
+import { Adapter } from "next-auth/adapters";
+import { db } from ".";
 
 // Define custom types for NextAuth
 type UserId = string;
@@ -37,7 +41,51 @@ export interface ResearchSource {
   url?: string;
 }
 
-// Users table
+// Add these types
+export type PlanType = "free" | "starter" | "unlimited";
+
+export interface PlanFeatures {
+  articleLimit: number;
+  customBranding: boolean;
+  prioritySupport: boolean;
+  analytics: boolean;
+  apiAccess: boolean;
+}
+
+// Add plans table
+export const plans = pgTable("plans", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["free", "starter", "unlimited"] }).notNull(),
+  price: integer("price").notNull(), // in cents
+  features: jsonb("features").$type<PlanFeatures>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Add subscriptions table
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  planId: integer("plan_id")
+    .references(() => plans.id)
+    .notNull(),
+  status: text("status", { enum: ["active", "cancelled", "expired"] })
+    .notNull()
+    .default("active"),
+  currentPeriodStart: timestamp("current_period_start").notNull(),
+  currentPeriodEnd: timestamp("current_period_end").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  cancelAt: timestamp("cancel_at"),
+  canceledAt: timestamp("canceled_at"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+});
+
+// Users table - Make planId optional
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
@@ -46,6 +94,7 @@ export const users = pgTable("users", {
   image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  planId: integer("plan_id").references(() => plans.id),
 });
 
 // NextAuth accounts table
@@ -129,26 +178,32 @@ export const articleAnalytics = pgTable("article_analytics", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Content generation queue
-export const contentGenerationQueue = pgTable("content_generation_queue", {
-  id: serial("id").primaryKey(),
-  articleId: integer("article_id")
-    .notNull()
-    .references(() => articles.id, { onDelete: "cascade" }),
-  status: text("status", { enum: ["pending", "processing", "completed", "failed"] })
-    .notNull()
-    .default("pending"),
-  error: text("error"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  processedAt: timestamp("processed_at"),
-});
-
 // Define relationships
-export const usersRelations = relations(users, ({ many }) => ({
+export const plansRelations = relations(plans, ({ many }) => ({
+  users: many(users),
+  subscriptions: many(subscriptions),
+}));
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+  plan: one(plans, {
+    fields: [subscriptions.planId],
+    references: [plans.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
   articles: many(articles),
   accounts: many(accounts),
   sessions: many(sessions),
+  plan: one(plans, {
+    fields: [users.planId],
+    references: [plans.id],
+  }),
+  subscription: many(subscriptions),
 }));
 
 export const articlesRelations = relations(articles, ({ one, many }) => ({

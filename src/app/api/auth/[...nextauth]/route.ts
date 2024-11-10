@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { NextAuthOptions } from "next-auth";
 import { db } from "@/db";
-import { users, sessions, accounts } from "@/db/schema";
+import { users, sessions, accounts, plans } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import type { Adapter } from "next-auth/adapters";
@@ -10,6 +10,14 @@ import type { Adapter } from "next-auth/adapters";
 const customAdapter: Adapter = {
   async createUser(user: any) {
     try {
+      const freePlan = await db.query.plans.findFirst({
+        where: eq(plans.type, "free"),
+      });
+
+      if (!freePlan) {
+        throw new Error("Free plan not found");
+      }
+
       const id = randomUUID();
       await db.insert(users).values({
         id,
@@ -17,6 +25,7 @@ const customAdapter: Adapter = {
         email: user.email!,
         image: user.image,
         emailVerified: new Date(),
+        planId: freePlan.id,
       });
 
       const dbUser = await db.query.users.findFirst({
@@ -37,6 +46,7 @@ const customAdapter: Adapter = {
 
       return dbUser!;
     } catch (error) {
+      console.error("Error creating user:", error);
       throw error;
     }
   },
@@ -310,6 +320,21 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
+        // Check if user still exists in database
+        const dbUser = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string),
+        });
+
+        if (!dbUser) {
+          // User doesn't exist anymore, invalidate session
+          await db.delete(sessions).where(eq(sessions.userId, token.id as string));
+          return {
+            ...session,
+            error: "UserDeleted",
+          };
+        }
+
+        // Check if session is valid
         const dbSession = await db.query.sessions.findFirst({
           where: and(
             eq(sessions.userId, token.id as string),
@@ -318,13 +343,10 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!dbSession) {
-          return session;
-        }
-
-        const dbUser = await customAdapter.getUser!(token.id as string);
-
-        if (!dbUser) {
-          return session;
+          return {
+            ...session,
+            error: "InvalidSession",
+          };
         }
 
         return {
@@ -338,7 +360,11 @@ export const authOptions: NextAuthOptions = {
           expires: dbSession.expires.toISOString(),
         };
       } catch (error) {
-        return session;
+        console.error("Session validation error:", error);
+        return {
+          ...session,
+          error: "SessionValidationError",
+        };
       }
     },
     async redirect({ url, baseUrl }) {
@@ -346,6 +372,18 @@ export const authOptions: NextAuthOptions = {
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  events: {
+    async signOut({ token }) {
+      try {
+        if (token?.sub) {
+          // Delete all sessions for this user
+          await db.delete(sessions).where(eq(sessions.userId, token.sub));
+        }
+      } catch (error) {
+        console.error("Error during signOut:", error);
+      }
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);

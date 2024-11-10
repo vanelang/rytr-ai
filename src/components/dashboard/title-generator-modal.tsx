@@ -65,14 +65,28 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
       setCreating(true);
       setSelectedTitleIndex(index);
 
-      const response = await fetch("/api/articles/create", {
+      // Create the article
+      const createResponse = await fetch("/api/articles/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
 
-      if (!response.ok) {
+      if (!createResponse.ok) {
         throw new Error("Failed to create article");
+      }
+
+      const { articleId } = await createResponse.json();
+
+      // Generate content immediately
+      const generateResponse = await fetch("/api/articles/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId }),
+      });
+
+      if (!generateResponse.ok) {
+        throw new Error("Failed to generate content");
       }
 
       onTitleSelect(title);

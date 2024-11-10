@@ -3,34 +3,26 @@ import { NextResponse } from "next/server";
 
 export default withAuth(
   function middleware(req) {
-    const path = req.nextUrl.pathname;
-    const isAuthenticated = !!req.nextauth.token;
+    const session = req.nextauth.token;
 
-    if (path.startsWith("/dashboard")) {
-      if (!isAuthenticated) {
-        return NextResponse.redirect(new URL("/", req.url));
-      }
-    }
-
-    if (path === "/" && isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+    // Check for session errors
+    if (session?.error === "UserDeleted" || session?.error === "InvalidSession") {
+      // Clear the session cookie
+      const response = NextResponse.redirect(new URL("/api/auth/signout", req.url));
+      response.cookies.delete("next-auth.session-token");
+      response.cookies.delete("__Secure-next-auth.session-token");
+      return response;
     }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized({ req, token }) {
-        return true;
-      },
-    },
-    secret: process.env.NEXTAUTH_SECRET,
-    pages: {
-      signIn: "/",
+      authorized: ({ token }) => !!token,
     },
   }
 );
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/pricing", "/blog/create"],
 };
