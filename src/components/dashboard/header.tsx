@@ -16,9 +16,10 @@ import { LogOut, Sparkles } from "lucide-react";
 
 interface DashboardHeaderProps {
   user: User;
+  onUpgradeClick?: () => void;
 }
 
-export function DashboardHeader({ user }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onUpgradeClick }: DashboardHeaderProps) {
   const userInitials = user.name
     ?.split(" ")
     .map((n) => n[0])
@@ -75,6 +76,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem
+                  className="text-primary hover:text-primary/90 focus:bg-white/10 cursor-pointer transition-colors"
+                  onClick={onUpgradeClick}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  <span>Upgrade Plan</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-red-400 hover:text-red-300 focus:bg-white/10 cursor-pointer transition-colors"
                   onClick={handleSignOut}
