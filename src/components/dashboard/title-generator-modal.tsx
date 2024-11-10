@@ -16,9 +16,15 @@ interface TitleGeneratorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTitleSelect: (title: string) => void;
+  onLimitReached?: () => void;
 }
 
-export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGeneratorModalProps) {
+export function TitleGeneratorModal({
+  isOpen,
+  onClose,
+  onTitleSelect,
+  onLimitReached,
+}: TitleGeneratorModalProps) {
   const router = useRouter();
   const [topic, setTopic] = useState("");
   const [titleCount, setTitleCount] = useState(2);
@@ -64,6 +70,7 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
     try {
       setCreating(true);
       setSelectedTitleIndex(index);
+      setError(null);
 
       // Create the article
       const createResponse = await fetch("/api/articles/create", {
@@ -72,11 +79,19 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
         body: JSON.stringify({ title }),
       });
 
+      const data = await createResponse.json();
+
       if (!createResponse.ok) {
-        throw new Error("Failed to create article");
+        // Check if it's a limit reached error
+        if (createResponse.status === 403 && data.error === "Monthly article limit reached") {
+          onLimitReached?.();
+          onClose();
+          return;
+        }
+        throw new Error(data.error || "Failed to create article");
       }
 
-      const { articleId } = await createResponse.json();
+      const { articleId } = data;
 
       // Generate content immediately
       const generateResponse = await fetch("/api/articles/generate", {
@@ -93,10 +108,13 @@ export function TitleGeneratorModal({ isOpen, onClose, onTitleSelect }: TitleGen
       router.refresh();
     } catch (error) {
       console.error("Error creating article:", error);
+      setError(error instanceof Error ? error.message : "Failed to create article");
     } finally {
       setCreating(false);
       setSelectedTitleIndex(null);
-      onClose();
+      if (!error) {
+        onClose();
+      }
     }
   };
 

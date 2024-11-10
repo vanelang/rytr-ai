@@ -125,6 +125,10 @@ export function DashboardContent() {
             onArticleCreated={handleArticleCreated}
             isGenerating={isGenerating}
             setIsGenerating={setIsGenerating}
+            onLimitReached={() => setShowUpgradeDialog(true)}
+            currentMonthCount={currentMonthArticles.length}
+            articleLimit={articleLimit}
+            isUnlimited={isUnlimited}
           />
         </main>
 

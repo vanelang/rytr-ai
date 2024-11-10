@@ -27,6 +27,10 @@ interface ArticleListProps {
   onArticleCreated: () => Promise<void>;
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
+  onLimitReached?: () => void;
+  currentMonthCount: number;
+  articleLimit: number;
+  isUnlimited: boolean;
 }
 
 export function ArticleList({
@@ -34,6 +38,10 @@ export function ArticleList({
   onArticleCreated,
   isGenerating,
   setIsGenerating,
+  onLimitReached,
+  currentMonthCount,
+  articleLimit,
+  isUnlimited,
 }: ArticleListProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -96,6 +104,14 @@ export function ArticleList({
     }
   };
 
+  const handleCreateClick = () => {
+    if (!isUnlimited && currentMonthCount >= articleLimit) {
+      onLimitReached?.();
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6">
@@ -107,7 +123,7 @@ export function ArticleList({
         </div>
         <Button
           className="bg-primary hover:bg-primary/90 w-full sm:w-auto text-white"
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleCreateClick}
           disabled={isGenerating}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -176,6 +192,7 @@ export function ArticleList({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onTitleSelect={handleTitleSelect}
+        onLimitReached={onLimitReached}
       />
 
       <Dialog open={deleteArticleId !== null} onOpenChange={() => setDeleteArticleId(null)}>
