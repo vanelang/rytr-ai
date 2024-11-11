@@ -13,6 +13,17 @@ function verifyWebhookSignature(payload: string, signature: string, secret: stri
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
 
+function parseDate(dateString: string | null): Date | null {
+  if (!dateString) return null;
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    return date;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const payload = await req.text();
@@ -26,8 +37,7 @@ export async function POST(req: Request) {
     }
 
     const event = JSON.parse(payload) as LemonSqueezyWebhookEvent;
-    const { event_name } = event.meta;
-    const { custom_data } = event.meta;
+    const { event_name, custom_data } = event.meta;
     const {
       status,
       customer_id,
@@ -40,15 +50,13 @@ export async function POST(req: Request) {
     } = event.data.attributes;
 
     if (!custom_data?.userId || !custom_data?.planId) {
+      console.error("Missing custom data:", custom_data);
       return NextResponse.json({ error: "Missing custom data" }, { status: 400 });
     }
 
     switch (event_name) {
-      case "subscription_created":
-      case "subscription_updated":
-      case "subscription_resumed":
-      case "subscription_unpaused": {
-        // Update or create subscription
+      case "subscription_created": {
+        // First, create the subscription record
         const subscriptionData = {
           id: event.data.id,
           userId: custom_data.userId,
@@ -56,39 +64,61 @@ export async function POST(req: Request) {
           status,
           variantId: variant_id.toString(),
           customerId: customer_id.toString(),
-          currentPeriodStart: new Date(current_period_start),
-          currentPeriodEnd: new Date(current_period_end),
-          renewsAt: renews_at ? new Date(renews_at) : null,
-          canceledAt: cancelled_at ? new Date(cancelled_at) : null,
-          pausedAt: pause_starts_at ? new Date(pause_starts_at) : null,
+          currentPeriodStart: parseDate(current_period_start) || new Date(),
+          currentPeriodEnd: parseDate(current_period_end) || new Date(),
+          renewsAt: parseDate(renews_at),
+          canceledAt: parseDate(cancelled_at),
+          pausedAt: parseDate(pause_starts_at),
+          createdAt: new Date(),
           updatedAt: new Date(),
         };
 
-        // First try to update existing subscription
-        const existingSubscription = await db.query.subscriptions.findFirst({
-          where: eq(subscriptions.id, event.data.id),
-        });
+        // Insert the subscription
+        await db.insert(subscriptions).values(subscriptionData);
 
-        if (existingSubscription) {
-          await db
-            .update(subscriptions)
-            .set(subscriptionData)
-            .where(eq(subscriptions.id, event.data.id));
-        } else {
-          // Create new subscription
-          await db.insert(subscriptions).values({
-            ...subscriptionData,
-            createdAt: new Date(),
-          });
-        }
-
-        // Update user with subscription ID and plan ID
-        await db
+        // Then update the user with the subscription ID and plan ID
+        const userUpdateResult = await db
           .update(users)
           .set({
             subscriptionId: event.data.id,
             planId: parseInt(custom_data.planId.toString()),
             customerId: customer_id.toString(),
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, custom_data.userId))
+          .returning({ updatedId: users.id });
+
+        if (!userUpdateResult.length) {
+          throw new Error(
+            `Failed to update user ${custom_data.userId} with subscription ${event.data.id}`
+          );
+        }
+
+        break;
+      }
+
+      case "subscription_updated":
+      case "subscription_resumed":
+      case "subscription_unpaused": {
+        // Update subscription
+        await db
+          .update(subscriptions)
+          .set({
+            status,
+            currentPeriodStart: parseDate(current_period_start) || new Date(),
+            currentPeriodEnd: parseDate(current_period_end) || new Date(),
+            renewsAt: parseDate(renews_at),
+            canceledAt: parseDate(cancelled_at),
+            pausedAt: parseDate(pause_starts_at),
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptions.id, event.data.id));
+
+        // Update user's plan
+        await db
+          .update(users)
+          .set({
+            planId: parseInt(custom_data.planId.toString()),
             updatedAt: new Date(),
           })
           .where(eq(users.id, custom_data.userId));
@@ -127,27 +157,13 @@ export async function POST(req: Request) {
         break;
       }
 
-      case "subscription_paused": {
-        // Update subscription status
-        await db
-          .update(subscriptions)
-          .set({
-            status,
-            pausedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(subscriptions.id, event.data.id));
-        break;
-      }
-
       case "subscription_payment_success": {
-        // Update subscription period
         await db
           .update(subscriptions)
           .set({
-            currentPeriodStart: new Date(current_period_start),
-            currentPeriodEnd: new Date(current_period_end),
-            renewsAt: renews_at ? new Date(renews_at) : null,
+            currentPeriodStart: parseDate(current_period_start) || new Date(),
+            currentPeriodEnd: parseDate(current_period_end) || new Date(),
+            renewsAt: parseDate(renews_at),
             updatedAt: new Date(),
           })
           .where(eq(subscriptions.id, event.data.id));
@@ -156,7 +172,6 @@ export async function POST(req: Request) {
 
       case "subscription_payment_failed":
       case "subscription_payment_recovered": {
-        // Update subscription status
         await db
           .update(subscriptions)
           .set({
@@ -171,6 +186,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Webhook error:", error);
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Webhook handler failed",
+        details: error instanceof Error ? error.stack : undefined,
+      },
+      { status: 500 }
+    );
   }
 }

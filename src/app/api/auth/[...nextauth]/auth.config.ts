@@ -277,6 +277,16 @@ export const authOptions: NextAuthOptions = {
 
         // Create new user if doesn't exist
         if (!dbUser) {
+          // Get the free plan
+          const freePlan = await db.query.plans.findFirst({
+            where: eq(plans.type, "free"),
+          });
+
+          if (!freePlan) {
+            console.error("Free plan not found");
+            return false;
+          }
+
           const id = randomUUID();
           await db.insert(users).values({
             id,
@@ -284,6 +294,11 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             image: user.image,
             emailVerified: new Date(),
+            planId: freePlan.id,
+            subscriptionId: null,
+            customerId: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           });
 
           dbUser = await db.query.users.findFirst({

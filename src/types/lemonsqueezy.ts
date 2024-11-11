@@ -13,8 +13,9 @@ export interface LemonSqueezyWebhookEvent {
       | "subscription_payment_recovered";
     custom_data?: {
       userId?: string;
-      planId?: number;
+      planId?: string | number;
     };
+    test_mode?: boolean;
   };
   data: {
     id: string;
