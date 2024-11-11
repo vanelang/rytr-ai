@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import { db } from "@/db";
-import { users, subscriptions } from "@/db/schema";
+import { users, plans, subscriptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 const LEMONSQUEEZY_API_KEY = process.env.LEMONSQUEEZY_API_KEY!;
@@ -43,10 +43,41 @@ export async function POST() {
     );
 
     if (!cancelResponse.ok) {
-      throw new Error("Failed to cancel subscription");
+      const error = await cancelResponse.json();
+      console.error("LemonSqueezy cancellation error:", error);
+      throw new Error("Failed to cancel subscription at LemonSqueezy");
     }
 
-    // The webhook will handle updating the database
+    // Get free plan
+    const freePlan = await db.query.plans.findFirst({
+      where: eq(plans.type, "free"),
+    });
+
+    if (!freePlan) {
+      throw new Error("Free plan not found");
+    }
+
+    // Update subscription status
+    await db
+      .update(subscriptions)
+      .set({
+        status: "cancelled",
+        canceledAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(subscriptions.id, user.subscription.id));
+
+    // Update user to free plan
+    await db
+      .update(users)
+      .set({
+        planId: freePlan.id,
+        subscriptionId: null,
+        customerId: null, // Clear the customer ID as well
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error canceling subscription:", error);

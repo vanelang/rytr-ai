@@ -6,6 +6,7 @@ import { LemonSqueezyWebhookEvent } from "@/types/lemonsqueezy";
 import crypto from "crypto";
 
 const LEMONSQUEEZY_SIGNATURE_HEADER = "x-signature";
+const LEMONSQUEEZY_API_KEY = process.env.LEMONSQUEEZY_API_KEY!;
 
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
   const hmac = crypto.createHmac("sha256", secret);
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
 
     switch (event_name) {
       case "subscription_created": {
-        // First, create the subscription record
+        // First, create the new subscription
         const subscriptionData = {
           id: event.data.id,
           userId: custom_data.userId,
@@ -73,11 +74,10 @@ export async function POST(req: Request) {
           updatedAt: new Date(),
         };
 
-        // Insert the subscription
         await db.insert(subscriptions).values(subscriptionData);
 
-        // Then update the user with the subscription ID and plan ID
-        const userUpdateResult = await db
+        // Update user with new subscription ID
+        await db
           .update(users)
           .set({
             subscriptionId: event.data.id,
@@ -85,13 +85,50 @@ export async function POST(req: Request) {
             customerId: customer_id.toString(),
             updatedAt: new Date(),
           })
-          .where(eq(users.id, custom_data.userId))
-          .returning({ updatedId: users.id });
+          .where(eq(users.id, custom_data.userId));
 
-        if (!userUpdateResult.length) {
-          throw new Error(
-            `Failed to update user ${custom_data.userId} with subscription ${event.data.id}`
-          );
+        // If there's a previous subscription, cancel it at LemonSqueezy
+        if (custom_data.previousSubscriptionId) {
+          try {
+            const cancelResponse = await fetch(
+              `https://api.lemonsqueezy.com/v1/subscriptions/${custom_data.previousSubscriptionId}`,
+              {
+                method: "DELETE",
+                headers: {
+                  Accept: "application/vnd.api+json",
+                  Authorization: `Bearer ${LEMONSQUEEZY_API_KEY}`,
+                },
+              }
+            );
+
+            if (!cancelResponse.ok) {
+              console.error(
+                `Failed to cancel previous subscription ${custom_data.previousSubscriptionId}:`,
+                await cancelResponse.json()
+              );
+            }
+
+            // Update the previous subscription status in our database
+            await db
+              .update(subscriptions)
+              .set({
+                status: "cancelled",
+                canceledAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(subscriptions.id, custom_data.previousSubscriptionId));
+
+            // Update user's plan ID to the new plan after cancellation
+            await db
+              .update(users)
+              .set({
+                planId: parseInt(custom_data.planId.toString()),
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, custom_data.userId));
+          } catch (error) {
+            console.error("Error cancelling previous subscription:", error);
+          }
         }
 
         break;
@@ -186,12 +223,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Webhook error:", error);
-    return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Webhook handler failed",
-        details: error instanceof Error ? error.stack : undefined,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 }

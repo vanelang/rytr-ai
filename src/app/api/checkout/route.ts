@@ -20,6 +20,9 @@ export async function POST(req: Request) {
 
     const user = await db.query.users.findFirst({
       where: eq(users.email, session.user.email),
+      with: {
+        subscription: true,
+      },
     });
 
     if (!user) {
@@ -37,6 +40,7 @@ export async function POST(req: Request) {
     // Get LemonSqueezy variant ID based on plan type
     const variantId = getLemonSqueezyVariantId(plan.type);
 
+    // Create checkout data with previous subscription info if exists
     const checkoutData = {
       data: {
         type: "checkouts",
@@ -44,7 +48,9 @@ export async function POST(req: Request) {
           checkout_data: {
             custom: {
               userId: user.id,
-              planId: plan.id.toString(),
+              planId: planId.toString(),
+              previousSubscriptionId:
+                user.subscription?.status === "active" ? user.subscription.id : undefined,
             },
           },
           product_options: {
@@ -72,7 +78,6 @@ export async function POST(req: Request) {
       },
     };
 
-    // Create checkout session
     const response = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
       method: "POST",
       headers: {
@@ -85,17 +90,14 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error("LemonSqueezy API error:", error);
       throw new Error(error.errors?.[0]?.detail || "Failed to create checkout session");
     }
 
     const checkout = await response.json();
-
-    if (!checkout.data?.attributes?.url) {
-      throw new Error("Invalid checkout response from LemonSqueezy");
-    }
-
     return NextResponse.json({ url: checkout.data.attributes.url });
   } catch (error) {
+    console.error("Checkout error:", error);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to create checkout session",

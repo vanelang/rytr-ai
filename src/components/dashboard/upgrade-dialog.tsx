@@ -103,42 +103,77 @@ export function UpgradeDialog({ isOpen, onClose, onUpgradeComplete }: UpgradeDia
     const selectedPlan = plans.find((p) => p.id === planId);
     if (!selectedPlan) return;
 
-    // If it's a paid plan, redirect to checkout
-    if (selectedPlan.price > 0) {
-      await handleUpgrade(planId);
-      return;
-    }
-
-    // For downgrading to free plan
     try {
       setError(null);
       setChangingPlan(planId);
 
-      // First, cancel the subscription at LemonSqueezy
-      const cancelResponse = await fetch("/api/subscription/cancel", {
-        method: "POST",
-      });
+      if (selectedPlan.type === "free") {
+        // For downgrading to free plan, cancel the subscription
+        const cancelResponse = await fetch("/api/subscription/cancel", {
+          method: "POST",
+        });
 
-      if (!cancelResponse.ok) {
-        const cancelData = await cancelResponse.json();
-        throw new Error(cancelData.error || "Failed to cancel subscription");
+        if (!cancelResponse.ok) {
+          const cancelData = await cancelResponse.json();
+          throw new Error(cancelData.error || "Failed to cancel subscription");
+        }
+
+        onUpgradeComplete();
+      } else if (currentPlan?.type === "free") {
+        // If upgrading from free plan, create a new checkout
+        const response = await fetch("/api/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ planId }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to create checkout session");
+        }
+
+        const { url } = await response.json();
+        if (url) {
+          window.location.href = url;
+        } else {
+          throw new Error("No checkout URL received");
+        }
+      } else {
+        // For switching between paid plans, use the change plan endpoint
+        const response = await fetch("/api/user/change-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Failed to change plan");
+        }
+
+        // Create checkout for the new plan
+        const checkoutResponse = await fetch("/api/checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ planId }),
+        });
+
+        if (!checkoutResponse.ok) {
+          const data = await checkoutResponse.json();
+          throw new Error(data.error || "Failed to create checkout session");
+        }
+
+        const { url } = await checkoutResponse.json();
+        if (url) {
+          window.location.href = url;
+        } else {
+          throw new Error("No checkout URL received");
+        }
       }
-
-      // Then change the plan to free
-      const response = await fetch("/api/user/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to change plan");
-      }
-
-      onUpgradeComplete();
-      await fetchUserData(); // Refresh the data after successful change
     } catch (error) {
       console.error("Error changing plan:", error);
       setError(error instanceof Error ? error.message : "Failed to change plan");
@@ -154,12 +189,16 @@ export function UpgradeDialog({ isOpen, onClose, onUpgradeComplete }: UpgradeDia
       return { text: "Current Plan", action: "current" };
     }
 
+    if (plan.type === "free") {
+      return { text: "Downgrade to Free", action: "downgrade" };
+    }
+
     const currentPriceIndex = plans.findIndex((p) => p.id === currentPlan.id);
     const newPlanIndex = plans.findIndex((p) => p.id === plan.id);
 
     return newPlanIndex > currentPriceIndex
       ? { text: `Upgrade to ${plan.name}`, action: "upgrade" }
-      : { text: `Downgrade to ${plan.name}`, action: "downgrade" };
+      : { text: `Switch to ${plan.name}`, action: "switch" };
   };
 
   const PlanSkeleton = () => (

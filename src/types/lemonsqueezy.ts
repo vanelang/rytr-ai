@@ -14,6 +14,7 @@ export interface LemonSqueezyWebhookEvent {
     custom_data?: {
       userId?: string;
       planId?: string | number;
+      previousSubscriptionId?: string;
     };
     test_mode?: boolean;
   };
