@@ -422,7 +422,7 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
         <div className="overflow-x-auto">
           <MenuBar editor={editor} />
         </div>
-        <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
+        <div className="overflow-y-auto max-h-[calc(100vh-250px)]">
           <EditorContent
             editor={editor}
             className="prose-img:max-w-2xl prose-img:mx-auto"
