@@ -12,6 +12,19 @@ export default function Loading() {
 
         {/* Side Panel Skeleton */}
         <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
+          {/* Image Grid Skeleton */}
+          <div className="space-y-4">
+            <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
+            <div className="grid grid-cols-2 gap-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="aspect-square rounded-lg bg-white/5 animate-pulse" />
+              ))}
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-white/5" />
+
+          {/* Sources List Skeleton */}
           <div className="space-y-4">
             <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
             <div className="space-y-3">

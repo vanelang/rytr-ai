@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 import { ArticleEditor } from "@/components/dashboard/article-editor";
 import { db } from "@/db";
 import { articles, users } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { SourcesList } from "@/components/dashboard/sources-list";
+import { ImageGrid } from "@/components/dashboard/image-grid";
 
 interface PageProps {
   params: Promise<{ articleId: string }>;
@@ -50,6 +51,8 @@ export default async function ArticlePage({ params }: PageProps) {
 
         {/* Side Panel */}
         <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
+          <ImageGrid sources={article.sources || []} />
+          <div className="w-full h-px bg-white/10" /> {/* Divider */}
           <SourcesList sources={article.sources || []} />
         </aside>
       </div>
