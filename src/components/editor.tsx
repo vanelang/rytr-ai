@@ -3,6 +3,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useCallback, useEffect } from "react";
 import { markdownToHtml } from "@/lib/markdown";
+import Image from "@tiptap/extension-image";
+import { Node as ProseMirrorNode } from "prosemirror-model";
+import { NodeViewRenderer, NodeViewRendererProps } from "@tiptap/core";
+import { Decoration, DecorationSource } from "prosemirror-view";
 
 interface EditorProps {
   value: string;
@@ -10,13 +14,85 @@ interface EditorProps {
   placeholder?: string;
 }
 
+const CustomImage = Image.extend({
+  renderHTML({ HTMLAttributes }) {
+    const { class: className, ...attrs } = HTMLAttributes;
+    return [
+      "div",
+      { class: "image-wrapper" },
+      ["img", { ...attrs, class: `${className || ""} block max-w-full mx-auto` }],
+    ];
+  },
+  addNodeView() {
+    return ({ node, HTMLAttributes }: NodeViewRendererProps) => {
+      const container = document.createElement("div");
+      container.className = "image-wrapper relative";
+
+      const img = document.createElement("img");
+      Object.entries(HTMLAttributes).forEach(([key, value]) => {
+        img.setAttribute(key, value as string);
+      });
+
+      img.className = "block max-w-full mx-auto rounded-lg";
+      container.appendChild(img);
+
+      if (node.attrs.alt) {
+        const caption = document.createElement("em");
+        caption.className = "block text-center mt-2 text-sm text-gray-400";
+        caption.textContent = node.attrs.alt;
+        container.appendChild(caption);
+      }
+
+      return {
+        dom: container,
+        update: (
+          node: ProseMirrorNode,
+          decorations: readonly Decoration[],
+          innerDecorations: DecorationSource
+        ) => {
+          if (node.type.name !== "image") return false;
+
+          Object.entries(node.attrs).forEach(([key, value]) => {
+            img.setAttribute(key, value as string);
+          });
+
+          // Update caption if it exists
+          if (node.attrs.alt) {
+            const caption = container.querySelector("em");
+            if (caption) {
+              caption.textContent = node.attrs.alt;
+            } else {
+              const newCaption = document.createElement("em");
+              newCaption.className = "block text-center mt-2 text-sm text-gray-400";
+              newCaption.textContent = node.attrs.alt;
+              container.appendChild(newCaption);
+            }
+          }
+
+          return true;
+        },
+      };
+    };
+  },
+});
+
 export function Editor({ value, onChange, placeholder }: EditorProps) {
   const editor = useEditor({
-    extensions: [StarterKit],
-    content: markdownToHtml(value),
+    extensions: [
+      StarterKit.configure({}),
+      CustomImage.configure({
+        HTMLAttributes: {
+          class: "rounded-lg max-w-full h-auto my-4",
+          loading: "lazy",
+        },
+        allowBase64: true,
+        inline: false,
+      }),
+    ],
+    content: value,
     editorProps: {
       attributes: {
-        class: "min-h-[500px] w-full text-white focus:outline-none",
+        class: "prose prose-invert min-h-[500px] w-full text-white focus:outline-none",
       },
     },
     onUpdate: ({ editor }) => {
@@ -26,7 +102,25 @@ export function Editor({ value, onChange, placeholder }: EditorProps) {
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(markdownToHtml(value));
+      const setContent = async () => {
+        const htmlContent = await markdownToHtml(value);
+        editor.commands.setContent(htmlContent);
+
+        // Force image refresh
+        setTimeout(() => {
+          const images = document.querySelectorAll(".ProseMirror img");
+          Array.from(images).forEach((element) => {
+            const img = element as HTMLImageElement;
+            const src = img.src;
+            img.src = "";
+            requestAnimationFrame(() => {
+              img.src = src;
+            });
+          });
+        }, 50);
+      };
+
+      setContent();
     }
   }, [editor, value]);
 

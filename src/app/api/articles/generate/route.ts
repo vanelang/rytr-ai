@@ -8,6 +8,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
 import { searchWeb } from "@/lib/tavily";
 
+interface ImageResult {
+  url: string;
+  title: string;
+  domain: string;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,11 +37,15 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Search for relevant information
-      const searchResults = await searchWeb(article.title);
+      // Now we only need one search call
+      const { webResults, imageResults } = await searchWeb(article.title);
+
+      if (!imageResults.length) {
+        console.warn("No images found for article:", article.title);
+      }
 
       // Format search results for the AI prompt
-      const sourcesContext = searchResults
+      const sourcesContext = webResults
         .map(
           (result, index) => `
 Source ${index + 1}:
@@ -46,65 +56,103 @@ URL: ${result.url}
         )
         .join("\n\n");
 
+      // Format image results with explicit markdown syntax
+      const imagesContext = imageResults
+        .map(
+          (image, index) => `
+[Image ${index + 1}]
+Markdown: ![${image.title}](${image.url})
+Description: ${image.title}
+Source: ${image.domain}
+`
+        )
+        .join("\n\n");
+
       const { text } = await generateText({
         model: getRandomModel(),
         messages: [
           {
             role: "system",
-            content:
-              "You are a professional content writer who creates engaging, well-structured articles with valuable insights. Use the provided sources to create accurate, well-researched content.",
+            content: `You are a professional content writer. Your task is to write engaging articles with images.
+CRITICAL: You MUST embed the provided images within the article content using the exact markdown syntax given.
+Each image should appear after a relevant paragraph that relates to the image's content.
+Failure to include ALL images will result in rejection of the article.`,
           },
           {
             role: "user",
-            content: `Write an engaging article about "${article.title}" using the following sources:
+            content: `Write an engaging article about "${article.title}" using these sources and images.
 
+CRITICAL IMAGE REQUIREMENTS:
+1. You MUST include ALL ${imageResults.length} images in the article content
+2. Copy and paste the exact markdown syntax for each image: ![title](url)
+3. Each image must be placed after a relevant paragraph
+4. Add a descriptive caption below each image using *italics*
+5. DO NOT skip any images or modify the URLs
+6. Verify that each image markdown is on its own line
+
+Available Sources:
 ${sourcesContext}
 
-Focus on:
-- Clear, concise explanations
-- Practical examples and insights
-- Natural, conversational tone
-- Well-structured content
-- Valuable takeaways
-- Accurate information from sources
+Required Images (ALL must be used):
+${imagesContext}
 
-Structure:
-1. Engaging introduction
-2. Main points with clear headings
-3. Supporting details and examples
-4. Actionable conclusion
+Article Requirements:
+1. Start with an engaging introduction
+2. Use clear section headings (## for main sections)
+3. Include relevant facts and information from sources
+4. Place each image after a related paragraph
+5. End with a strong conclusion
 
-Use markdown formatting:
+Formatting Guide:
 - ## for main headings
 - ### for subheadings
-- - for bullet points
 - > for important quotes
-- *text* for emphasis
-- --- for section breaks
+- * for emphasis
+- - for bullet points
 
-Keep paragraphs short and focused. Write as if explaining to an interested friend.`,
+FINAL VERIFICATION:
+- Confirm all ${imageResults.length} images are included
+- Each image has a caption
+- Images are evenly distributed throughout the content`,
           },
         ],
         temperature: 0.7,
-        maxTokens: 2000,
+        maxTokens: 2500,
       });
+
+      // Verify that all images are included in the generated content
+      const imageVerification = imageResults.every(
+        (image) => text.includes(image.url) && text.includes(`![`)
+      );
+
+      if (!imageVerification) {
+        throw new Error("Generated content is missing one or more required images");
+      }
 
       if (!text || text.length < 100) {
         throw new Error("Generated content is too short or empty");
       }
 
-      // Update article with generated content and sources
+      // Update article with generated content, sources, and images
       await db
         .update(articles)
         .set({
           status: "published",
           content: text,
-          sources: searchResults.map((result) => ({
-            title: result.title,
-            summary: result.content || "",
-            source: "web",
-            url: result.url,
-          })),
+          sources: [
+            ...webResults.map((result) => ({
+              title: result.title,
+              summary: result.content || "",
+              source: "web",
+              url: result.url,
+            })),
+            ...imageResults.map((image) => ({
+              title: image.title,
+              summary: `Image from ${image.domain}`,
+              source: "image",
+              url: image.url,
+            })),
+          ],
           updatedAt: new Date(),
         })
         .where(eq(articles.id, articleId));
@@ -129,7 +177,7 @@ Keep paragraphs short and focused. Write as if explaining to an interested frien
         })
         .where(eq(articles.id, articleId));
 
-      throw generationError; // Re-throw to be caught by outer catch block
+      throw generationError;
     }
   } catch (error) {
     console.error("Content generation error:", error);

@@ -13,6 +13,7 @@ import {
   List,
   ListOrdered,
   Quote,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -31,7 +32,11 @@ import BulletList from "@tiptap/extension-bullet-list";
 import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import Blockquote from "@tiptap/extension-blockquote";
+import Image from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
 import { ResearchSource } from "@/db/schema";
+import { Node as ProseMirrorNode } from "prosemirror-model";
+import { NodeViewRenderer, NodeViewRendererProps } from "@tiptap/core";
 
 interface Article {
   id: number;
@@ -65,6 +70,22 @@ const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
     return null;
   }
+
+  const addImage = useCallback(() => {
+    const url = window.prompt("Enter the URL of the image:");
+    if (url) {
+      editor
+        .chain()
+        .focus()
+        .setImage({
+          src: url,
+          alt: "Image",
+          title: "Image",
+        })
+        .createParagraph()
+        .run();
+    }
+  }, [editor]);
 
   return (
     <div className="border-b border-white/10 p-2 flex gap-1 flex-wrap">
@@ -153,9 +174,78 @@ const MenuBar = ({ editor }: { editor: any }) => {
       >
         <Quote className="h-4 w-4" />
       </Button>
+      <div className="w-px h-6 bg-white/10 mx-1" />
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={addImage}
+        className="text-white/70 hover:text-white hover:bg-white/10"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </Button>
     </div>
   );
 };
+
+// Add a custom image node extension
+const CustomImage = Image.extend({
+  renderHTML({ HTMLAttributes }) {
+    const { class: className, ...attrs } = HTMLAttributes;
+    return [
+      "div",
+      { class: "image-wrapper" },
+      ["img", { ...attrs, class: `${className || ""} block max-w-full mx-auto` }],
+    ];
+  },
+  addNodeView() {
+    return ({ node, HTMLAttributes }: NodeViewRendererProps) => {
+      const container = document.createElement("div");
+      container.className = "image-wrapper relative";
+
+      const img = document.createElement("img");
+      Object.entries(HTMLAttributes).forEach(([key, value]) => {
+        img.setAttribute(key, value as string);
+      });
+
+      img.className = "block max-w-full mx-auto rounded-lg";
+      container.appendChild(img);
+
+      if (node.attrs.alt) {
+        const caption = document.createElement("em");
+        caption.className = "block text-center mt-2 text-sm text-gray-400";
+        caption.textContent = node.attrs.alt;
+        container.appendChild(caption);
+      }
+
+      return {
+        dom: container,
+        update: (node: ProseMirrorNode, decorations: any) => {
+          if (node.type.name !== "image") return false;
+
+          // Update image attributes
+          Object.entries(node.attrs).forEach(([key, value]) => {
+            img.setAttribute(key, value as string);
+          });
+
+          // Update caption if it exists
+          if (node.attrs.alt) {
+            const caption = container.querySelector("em");
+            if (caption) {
+              caption.textContent = node.attrs.alt;
+            } else {
+              const newCaption = document.createElement("em");
+              newCaption.className = "block text-center mt-2 text-sm text-gray-400";
+              newCaption.textContent = node.attrs.alt;
+              container.appendChild(newCaption);
+            }
+          }
+
+          return true;
+        },
+      };
+    };
+  },
+});
 
 export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps) {
   const router = useRouter();
@@ -178,6 +268,17 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
         OrderedList,
         ListItem,
         Blockquote,
+        Link.configure({
+          openOnClick: false,
+        }),
+        CustomImage.configure({
+          HTMLAttributes: {
+            class: "rounded-lg max-w-full h-auto my-4",
+            loading: "lazy",
+          },
+          allowBase64: true,
+          inline: false,
+        }),
         StarterKit.configure({
           document: false,
           paragraph: false,
@@ -205,17 +306,12 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
       content: content,
       editorProps: {
         attributes: {
-          class: `prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 prose-code:font-[var(--font-ibm-plex-mono),_monospace] prose-pre:font-[var(--font-ibm-plex-mono),_monospace] max-w-none focus:outline-none min-h-[500px] px-4 py-2`,
+          class: `prose prose-invert prose-headings:text-white prose-p:text-gray-300 prose-blockquote:text-gray-300 prose-strong:text-white prose-code:text-white prose-pre:bg-gray-800/50 prose-pre:text-gray-300 prose-code:font-[var(--font-ibm-plex-mono),_monospace] prose-pre:font-[var(--font-ibm-plex-mono),_monospace] prose-img:rounded-lg prose-img:mx-auto prose-img:max-w-2xl prose-img:shadow-lg max-w-none focus:outline-none min-h-[500px] px-4 py-2`,
         },
       },
-      onUpdate: ({ editor }) => {
-        if (saving) return;
-        setContent(editor.getHTML());
+      parseOptions: {
+        preserveWhitespace: true,
       },
-      editable: true,
-      injectCSS: true,
-      enableCoreExtensions: true,
-      immediatelyRender: false,
     },
     [initialArticle.id]
   );
@@ -223,9 +319,34 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
   useEffect(() => {
     const initializeContent = async () => {
       if (initialArticle.content) {
-        const htmlContent = await markdownToHtml(initialArticle.content);
-        setContent(htmlContent);
-        editor?.commands.setContent(htmlContent);
+        try {
+          console.log("Original markdown:", initialArticle.content);
+          const htmlContent = await markdownToHtml(initialArticle.content);
+          console.log("Converted HTML:", htmlContent);
+
+          if (editor && !editor.isDestroyed) {
+            // Clear and set content with a small delay to ensure proper rendering
+            editor.commands.clearContent();
+            setTimeout(() => {
+              editor.commands.setContent(htmlContent);
+              editor.commands.focus("end");
+
+              // Force image refresh
+              const images = document.querySelectorAll(".ProseMirror img");
+              // @ts-ignore
+              images.forEach((img: HTMLImageElement) => {
+                const src = img.src;
+                img.src = "";
+                requestAnimationFrame(() => {
+                  img.src = src;
+                });
+              });
+            }, 50);
+          }
+          setContent(htmlContent);
+        } catch (error) {
+          console.error("Error converting markdown to HTML:", error);
+        }
       }
     };
 
@@ -270,6 +391,16 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
     }
   };
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    console.error("Image failed to load:", e.currentTarget.src);
+    e.currentTarget.style.border = "2px dashed red";
+    e.currentTarget.style.padding = "1rem";
+    e.currentTarget.style.display = "block";
+    e.currentTarget.style.width = "100%";
+    e.currentTarget.style.textAlign = "center";
+    e.currentTarget.style.background = "rgba(255,0,0,0.1)";
+  };
+
   if (!article) {
     return null;
   }
@@ -292,7 +423,15 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
           <MenuBar editor={editor} />
         </div>
         <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-          <EditorContent editor={editor} />
+          <EditorContent
+            editor={editor}
+            className="prose-img:max-w-2xl prose-img:mx-auto"
+            onError={(e) => {
+              if (e.target instanceof HTMLImageElement) {
+                handleImageError(e as React.SyntheticEvent<HTMLImageElement, Event>);
+              }
+            }}
+          />
         </div>
       </div>
     </div>
