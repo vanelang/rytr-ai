@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
@@ -11,6 +12,41 @@ import { ImageGrid } from "@/components/dashboard/image-grid";
 
 interface PageProps {
   params: Promise<{ articleId: string }>;
+}
+
+// Dynamic metadata generation
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { articleId } = await params;
+
+  const article = await db.query.articles.findFirst({
+    where: eq(articles.id, parseInt(articleId)),
+  });
+
+  if (!article) {
+    return {
+      title: "Article Not Found",
+      description: "The requested article could not be found",
+    };
+  }
+
+  return {
+    title: `${article.title}`,
+    description: article.metadata?.description || "Edit and manage your AI-generated article",
+    keywords: article.metadata?.keywords || [],
+    openGraph: {
+      title: article.title,
+      description: article.metadata?.description || "Edit and manage your AI-generated article",
+      type: "article",
+      publishedTime: article.publishedAt?.toISOString(),
+      modifiedTime: article.updatedAt.toISOString(),
+      authors: ["AI Content Platform"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.metadata?.description || "Edit and manage your AI-generated article",
+    },
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps) {

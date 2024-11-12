@@ -1,6 +1,16 @@
+import { Metadata } from "next";
 import { DashboardContent } from "./dashboard-content";
 
-// Make this a server component
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "Manage your AI-generated articles and content in one place",
+  openGraph: {
+    title: "Dashboard",
+    description: "Manage your AI-generated articles and content in one place",
+    type: "website",
+  },
+};
+
 export default function DashboardPage() {
   return <DashboardContent />;
 }

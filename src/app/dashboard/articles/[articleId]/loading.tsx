@@ -1,6 +1,13 @@
+import { Metadata } from "next";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { ArticleEditorSkeleton } from "@/components/dashboard/article-editor-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Loading Article | AI Content Platform",
+  description: "Loading your article content...",
+  robots: "noindex, nofollow", // Prevent indexing of loading states
+};
 
 export default function Loading() {
   return (
