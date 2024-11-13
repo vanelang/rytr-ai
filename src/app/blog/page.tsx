@@ -40,7 +40,7 @@ function removeFirstHeading(markdown: string): string {
 }
 
 function calculateReadingTime(content: string): number {
-  const wordsPerMinute = 200; // Average reading speed
+  const wordsPerMinute = 200;
   const words = content.split(/\s+/).length;
   return Math.ceil(words / wordsPerMinute);
 }
@@ -59,7 +59,7 @@ export default async function BlogPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <div className="min-h-screen bg-black text-white">
       <header className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-4xl font-bold tracking-tight text-center mb-4">Recent Articles</h1>
@@ -71,38 +71,44 @@ export default async function BlogPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
         {articlesWithHtml.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">No articles published yet.</p>
+            <p className="text-gray-400">No articles published yet.</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {articlesWithHtml.map((article) => (
               <Card
                 key={article.id}
-                className="bg-gray-800 border-gray-700 hover:border-primary transition-colors duration-300"
+                className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-all duration-300"
               >
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">{article.title}</CardTitle>
+                  <CardTitle className="text-xl font-semibold text-white">
+                    {article.title}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className="text-gray-400"
-                    dangerouslySetInnerHTML={{ __html: article.htmlContent.slice(0, 200) + "..." }}
+                    className="text-gray-400 line-clamp-3"
+                    dangerouslySetInnerHTML={{
+                      __html: article.htmlContent.slice(0, 200) + "...",
+                    }}
                   />
                 </CardContent>
                 <CardFooter className="flex justify-between items-center">
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>{format(new Date(article.createdAt), "MMMM d, yyyy")}</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-sm text-gray-500">
-                    <ClockIcon className="h-4 w-4" />
-                    <span>{article.readingTime} min read</span>
+                  <div className="flex items-center space-x-4 text-gray-500">
+                    <div className="flex items-center space-x-1">
+                      <CalendarIcon className="h-4 w-4" />
+                      <span>{format(new Date(article.createdAt), "MMMM d, yyyy")}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <ClockIcon className="h-4 w-4" />
+                      <span>{article.readingTime} min read</span>
+                    </div>
                   </div>
                 </CardFooter>
                 <CardFooter>
                   <Link
                     href={`/blog/${article.id}`}
-                    className="inline-flex items-center text-blue-600 hover:text-blue-700"
+                    className="inline-flex items-center text-white hover:text-gray-300 transition-colors"
                   >
                     Read more
                     <ArrowRight className="ml-2 h-4 w-4" />
