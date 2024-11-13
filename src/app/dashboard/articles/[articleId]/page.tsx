@@ -10,6 +10,9 @@ import { eq } from "drizzle-orm";
 import { SourcesList } from "@/components/dashboard/sources-list";
 import { ImageGrid } from "@/components/dashboard/image-grid";
 import { VideoList } from "@/components/dashboard/video-list";
+import { Button } from "@/components/ui/button";
+import { SidebarOpen } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface PageProps {
   params: Promise<{ articleId: string }>;
@@ -78,29 +81,52 @@ export default async function ArticlePage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  console.log(article.sources);
   const videoSources = article.sources?.filter((source) => source.source === "video") || [];
   const hasVideos = videoSources.length > 0;
+
+  const SidePanel = () => (
+    <div className="space-y-6">
+      <ImageGrid sources={article.sources || []} />
+      {hasVideos && (
+        <>
+          <div className="w-full h-px bg-white/10" />
+          <VideoList sources={article.sources || []} />
+        </>
+      )}
+      <div className="w-full h-px bg-white/10" />
+      <SourcesList sources={article.sources || []} />
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <DashboardHeader user={session.user} />
       <div className="flex-1 flex">
         <main className="flex-1 container max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Mobile Drawer Trigger */}
+          <div className="lg:hidden mb-4">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="border-white/10">
+                  <SidebarOpen className="h-4 w-4 mr-2" />
+                  View Sources
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="w-[90%] sm:w-[440px] bg-gray-950 border-white/10 p-6"
+              >
+                <SidePanel />
+              </SheetContent>
+            </Sheet>
+          </div>
+
           <ArticleEditor articleId={parseInt(articleId)} initialArticle={article} />
         </main>
 
-        {/* Side Panel */}
-        <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
-          <ImageGrid sources={article.sources || []} />
-          {hasVideos && (
-            <>
-              <div className="w-full h-px bg-white/10" />
-              <VideoList sources={article.sources || []} />
-            </>
-          )}
-          <div className="w-full h-px bg-white/10" />
-          <SourcesList sources={article.sources || []} />
+        {/* Desktop Side Panel */}
+        <aside className="hidden lg:block w-80 border-l border-white/10 p-6">
+          <SidePanel />
         </aside>
       </div>
     </div>

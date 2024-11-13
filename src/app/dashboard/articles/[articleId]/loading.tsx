@@ -14,10 +14,15 @@ export default function Loading() {
     <div className="min-h-screen flex flex-col bg-black">
       <main className="flex-1 flex">
         <div className="flex-1 container max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Mobile Drawer Trigger Skeleton */}
+          <div className="lg:hidden mb-4">
+            <div className="h-9 w-32 bg-white/5 rounded animate-pulse" />
+          </div>
+
           <ArticleEditorSkeleton />
         </div>
 
-        {/* Side Panel Skeleton */}
+        {/* Desktop Side Panel Skeleton */}
         <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
           {/* Image Grid Skeleton */}
           <div className="space-y-4">
