@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowRight, CalendarIcon, ClockIcon } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
@@ -6,6 +5,10 @@ import { articles } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { format } from "date-fns";
 import { markdownToHtml } from "@/lib/markdown";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/auth.config";
+import { BlogNav } from "@/components/blog/nav";
+import Link from "next/link";
 
 // Enable dynamic rendering and set revalidation time
 export const revalidate = 0;
@@ -46,6 +49,7 @@ function calculateReadingTime(content: string): number {
 }
 
 export default async function BlogPage() {
+  const session = await getServerSession(authOptions);
   const publishedArticles = await getPublishedArticles();
 
   // Convert markdown to HTML for each article
@@ -60,6 +64,9 @@ export default async function BlogPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <BlogNav session={session} />
+
+      {/* Main Content */}
       <header className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-center mb-6">
