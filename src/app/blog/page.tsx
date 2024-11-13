@@ -60,47 +60,49 @@ export default async function BlogPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <header className="py-12 px-4 sm:px-6 lg:px-8">
+      <header className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold tracking-tight text-center mb-4">Recent Articles</h1>
-          <p className="text-xl text-gray-400 text-center">
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-center mb-6">
+            Recent Articles
+          </h1>
+          <p className="text-2xl text-gray-400 text-center max-w-3xl mx-auto">
             Discover the latest articles created by our users with AI assistance
           </p>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         {articlesWithHtml.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">No articles published yet.</p>
+            <p className="text-xl text-gray-400">No articles published yet.</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {articlesWithHtml.map((article) => (
               <Card
                 key={article.id}
                 className="bg-gray-900 border-gray-800 hover:border-gray-700 transition-all duration-300"
               >
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold text-white">
+                  <CardTitle className="text-2xl font-semibold text-white leading-tight">
                     {article.title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className="text-gray-400 line-clamp-3"
+                    className="text-gray-400 text-lg line-clamp-3"
                     dangerouslySetInnerHTML={{
                       __html: article.htmlContent.slice(0, 200) + "...",
                     }}
                   />
                 </CardContent>
                 <CardFooter className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4 text-gray-500">
+                  <div className="flex items-center space-x-4 text-gray-500 text-base">
                     <div className="flex items-center space-x-1">
-                      <CalendarIcon className="h-4 w-4" />
+                      <CalendarIcon className="h-5 w-5" />
                       <span>{format(new Date(article.createdAt), "MMMM d, yyyy")}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                      <ClockIcon className="h-4 w-4" />
+                      <ClockIcon className="h-5 w-5" />
                       <span>{article.readingTime} min read</span>
                     </div>
                   </div>
@@ -108,10 +110,10 @@ export default async function BlogPage() {
                 <CardFooter>
                   <Link
                     href={`/blog/${article.id}`}
-                    className="inline-flex items-center text-white hover:text-gray-300 transition-colors"
+                    className="inline-flex items-center text-lg text-white hover:text-gray-300 transition-colors"
                   >
                     Read more
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </CardFooter>
               </Card>
