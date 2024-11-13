@@ -37,7 +37,6 @@ export async function POST(req: Request) {
     }
 
     try {
-      // Now we only need one search call
       const { webResults, imageResults } = await searchWeb(article.title);
 
       if (!imageResults.length) {
@@ -56,7 +55,6 @@ URL: ${result.url}
         )
         .join("\n\n");
 
-      // Format image results with explicit markdown syntax
       const imagesContext = imageResults
         .map(
           (image, index) => `
@@ -74,33 +72,24 @@ Source: ${image.domain}
           {
             role: "system",
             content: `You are a professional content writer. Your task is to write engaging articles with images.
-CRITICAL: You MUST embed the provided images within the article content using the exact markdown syntax given.
-Each image should appear after a relevant paragraph that relates to the image's content.
-Failure to include ALL images will result in rejection of the article.`,
+Try to embed the provided images within the article content using the exact markdown syntax given.
+Each image should appear after a relevant paragraph that relates to the image's content.`,
           },
           {
             role: "user",
             content: `Write an engaging article about "${article.title}" using these sources and images.
 
-CRITICAL IMAGE REQUIREMENTS:
-1. You MUST include ALL ${imageResults.length} images in the article content
-2. Copy and paste the exact markdown syntax for each image: ![title](url)
-3. Each image must be placed after a relevant paragraph
-4. Add a descriptive caption below each image using *italics*
-5. DO NOT skip any images or modify the URLs
-6. Verify that each image markdown is on its own line
-
 Available Sources:
 ${sourcesContext}
 
-Required Images (ALL must be used):
+Available Images:
 ${imagesContext}
 
 Article Requirements:
 1. Start with an engaging introduction
 2. Use clear section headings (## for main sections)
 3. Include relevant facts and information from sources
-4. Place each image after a related paragraph
+4. Try to place images after related paragraphs when possible
 5. End with a strong conclusion
 
 Formatting Guide:
@@ -108,32 +97,18 @@ Formatting Guide:
 - ### for subheadings
 - > for important quotes
 - * for emphasis
-- - for bullet points
-
-FINAL VERIFICATION:
-- Confirm all ${imageResults.length} images are included
-- Each image has a caption
-- Images are evenly distributed throughout the content`,
+- - for bullet points`,
           },
         ],
         temperature: 0.7,
         maxTokens: 2500,
       });
 
-      // Verify that all images are included in the generated content
-      const imageVerification = imageResults.every(
-        (image) => text.includes(image.url) && text.includes(`![`)
-      );
-
-      if (!imageVerification) {
-        throw new Error("Generated content is missing one or more required images");
-      }
-
       if (!text || text.length < 100) {
         throw new Error("Generated content is too short or empty");
       }
 
-      // Update article with generated content, sources, and images
+      // Update article with generated content and sources
       await db
         .update(articles)
         .set({

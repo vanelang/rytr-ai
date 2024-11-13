@@ -39,6 +39,12 @@ function removeFirstHeading(markdown: string): string {
   return markdown;
 }
 
+function calculateReadingTime(content: string): number {
+  const wordsPerMinute = 200; // Average reading speed
+  const words = content.split(/\s+/).length;
+  return Math.ceil(words / wordsPerMinute);
+}
+
 export default async function BlogPage() {
   const publishedArticles = await getPublishedArticles();
 
@@ -47,7 +53,8 @@ export default async function BlogPage() {
     publishedArticles.map(async (article) => {
       const contentWithoutHeading = removeFirstHeading(article.content || "");
       const htmlContent = await markdownToHtml(contentWithoutHeading);
-      return { ...article, htmlContent };
+      const readingTime = calculateReadingTime(contentWithoutHeading);
+      return { ...article, htmlContent, readingTime };
     })
   );
 
@@ -89,7 +96,7 @@ export default async function BlogPage() {
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-500">
                     <ClockIcon className="h-4 w-4" />
-                    <span>{article.metadata?.readingTime || 5} min read</span>
+                    <span>{article.readingTime} min read</span>
                   </div>
                 </CardFooter>
                 <CardFooter>
