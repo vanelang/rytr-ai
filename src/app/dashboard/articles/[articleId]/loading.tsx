@@ -29,6 +29,22 @@ export default function Loading() {
             </div>
           </div>
 
+          {/* Video Grid Skeleton */}
+          <div className="w-full h-px bg-white/5" />
+          <div className="space-y-4">
+            <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
+            <div className="grid grid-cols-2 gap-2">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className={`aspect-square rounded-lg bg-white/5 animate-pulse ${
+                    i === 2 ? "col-span-1" : ""
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
           <div className="w-full h-px bg-white/5" />
 
           {/* Sources List Skeleton */}

@@ -264,6 +264,7 @@ export function ArticleEditor({ articleId, initialArticle }: ArticleEditorProps)
         Italic,
         CodeExtension,
         Heading,
+        Image,
         BulletList,
         OrderedList,
         ListItem,

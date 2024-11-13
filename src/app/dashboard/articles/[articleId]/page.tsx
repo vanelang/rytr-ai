@@ -9,6 +9,7 @@ import { articles, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { SourcesList } from "@/components/dashboard/sources-list";
 import { ImageGrid } from "@/components/dashboard/image-grid";
+import { VideoList } from "@/components/dashboard/video-list";
 
 interface PageProps {
   params: Promise<{ articleId: string }>;
@@ -77,6 +78,10 @@ export default async function ArticlePage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
+  console.log(article.sources);
+  const videoSources = article.sources?.filter((source) => source.source === "video") || [];
+  const hasVideos = videoSources.length > 0;
+
   return (
     <div className="min-h-screen flex flex-col bg-black">
       <DashboardHeader user={session.user} />
@@ -88,7 +93,13 @@ export default async function ArticlePage({ params }: PageProps) {
         {/* Side Panel */}
         <aside className="hidden lg:block w-80 border-l border-white/10 p-6 space-y-6">
           <ImageGrid sources={article.sources || []} />
-          <div className="w-full h-px bg-white/10" /> {/* Divider */}
+          {hasVideos && (
+            <>
+              <div className="w-full h-px bg-white/10" />
+              <VideoList sources={article.sources || []} />
+            </>
+          )}
+          <div className="w-full h-px bg-white/10" />
           <SourcesList sources={article.sources || []} />
         </aside>
       </div>

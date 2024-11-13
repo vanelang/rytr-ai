@@ -37,7 +37,8 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { webResults, imageResults } = await searchWeb(article.title);
+      const { webResults, imageResults, videoResults } = await searchWeb(article.title);
+      console.log(videoResults);
 
       if (!imageResults.length) {
         console.warn("No images found for article:", article.title);
@@ -71,13 +72,15 @@ Source: ${image.domain}
         messages: [
           {
             role: "system",
-            content: `You are a professional content writer. Your task is to write engaging articles with images.
-Try to embed the provided images within the article content using the exact markdown syntax given.
-Each image should appear after a relevant paragraph that relates to the image's content.`,
+            content: `You are a professional content writer. Your task is to write engaging articles with images and videos.
+Try to embed the provided images and videos within the article content using the exact markdown syntax given.
+Each media element should appear after a relevant paragraph that relates to its content.`,
           },
           {
             role: "user",
-            content: `Write an engaging article about "${article.title}" using these sources and images.
+            content: `Write an engaging article about "${
+              article.title
+            }" using these sources, images, and videos.
 
 Available Sources:
 ${sourcesContext}
@@ -85,11 +88,24 @@ ${sourcesContext}
 Available Images:
 ${imagesContext}
 
+Available Videos:
+${videoResults
+  .map(
+    (video, index) => `
+[Video ${index + 1}]
+Title: ${video.title}
+URL: ${video.url}
+Platform: ${video.platform}
+${video.duration ? `Duration: ${video.duration}` : ""}
+`
+  )
+  .join("\n\n")}
+
 Article Requirements:
 1. Start with an engaging introduction
 2. Use clear section headings (## for main sections)
 3. Include relevant facts and information from sources
-4. Try to place images after related paragraphs when possible
+4. Place images and videos after related paragraphs
 5. End with a strong conclusion
 
 Formatting Guide:
@@ -97,7 +113,8 @@ Formatting Guide:
 - ### for subheadings
 - > for important quotes
 - * for emphasis
-- - for bullet points`,
+- - for bullet points
+- For videos, use: [Watch: Title](video_url)`,
           },
         ],
         temperature: 0.7,
@@ -126,6 +143,12 @@ Formatting Guide:
               summary: `Image from ${image.domain}`,
               source: "image",
               url: image.url,
+            })),
+            ...videoResults.map((video) => ({
+              title: video.title,
+              summary: `Video from ${video.platform}`,
+              source: "video",
+              url: video.url,
             })),
           ],
           updatedAt: new Date(),
